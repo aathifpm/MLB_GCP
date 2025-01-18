@@ -326,63 +326,184 @@ class MLBDataFetcher:
             game_info = raw_data.get('gameData', {})
             plays = raw_data.get('liveData', {}).get('plays', {})
             
-            # Core game narrative elements
+            # Core Game Data
             game_data = {
                 'summary': {
-                    'home_team': game_info.get('teams', {}).get('home', {}).get('name'),
-                    'away_team': game_info.get('teams', {}).get('away', {}).get('name'),
+                'home_team': game_info.get('teams', {}).get('home', {}).get('name'),
+                'away_team': game_info.get('teams', {}).get('away', {}).get('name'),
                     'home_score': linescore.get('teams', {}).get('home', {}).get('runs', 0),
                     'away_score': linescore.get('teams', {}).get('away', {}).get('runs', 0),
                     'status': game_info.get('status', {}).get('detailedState'),
                     'venue': game_info.get('venue', {}).get('name'),
-                    'game_date': game_info.get('datetime', {}).get('dateTime')
+                    'game_date': game_info.get('datetime', {}).get('dateTime'),
+                    'weather': game_info.get('weather', {}),
+                    'start_time': game_info.get('datetime', {}).get('time'),
+                    'day_night': game_info.get('datetime', {}).get('dayNight'),
+                    'game_number': game_info.get('gameNumber'),
+                    'scheduled_innings': game_info.get('scheduledInnings', 9)
                 }
             }
 
-            # Special game situations that add drama
+            # Game State Data
+            game_data['game_state'] = {
+                'inning': linescore.get('currentInning'),
+                'inning_half': linescore.get('inningState'),
+                'outs': linescore.get('outs'),
+                'balls': linescore.get('balls'),
+                'strikes': linescore.get('strikes'),
+                'abstract_state': game_info.get('status', {}).get('abstractGameState'),
+                'detailed_state': game_info.get('status', {}).get('detailedState'),
+                'is_perfect_game': game_info.get('flags', {}).get('perfectGame', False),
+                'is_no_hitter': game_info.get('flags', {}).get('noHitter', False)
+            }
+
+            # Current Game Situation
+            current_play = plays.get('currentPlay', {})
+            if current_play:
+                game_data['current_situation'] = {
+                    'batter': self._extract_player_info(current_play.get('matchup', {}).get('batter', {})),
+                    'pitcher': self._extract_player_info(current_play.get('matchup', {}).get('pitcher', {})),
+                    'runners_on_base': self._get_runners_narrative(current_play),
+                    'count': f"{linescore.get('balls', 0)}-{linescore.get('strikes', 0)}",
+                    'outs_in_inning': linescore.get('outs', 0)
+                }
+
+            # Team Statistics
+            game_data['team_stats'] = {
+                'home': self._extract_team_stats(boxscore.get('teams', {}).get('home', {})),
+                'away': self._extract_team_stats(boxscore.get('teams', {}).get('away', {}))
+            }
+
+            # Play-by-Play Data
+            all_plays = plays.get('allPlays', [])
+            game_data['plays'] = {
+                'all_plays': [self._process_play(play) for play in all_plays],
+                'scoring_plays': [self._process_play(all_plays[idx]) for idx in plays.get('scoringPlays', [])],
+                'plays_by_inning': self._group_plays_by_inning(all_plays)
+            }
+
+            # Game Leaders and Standouts
+            game_data['leaders'] = {
+                'batting': self._extract_notable_hitting(boxscore),
+                'pitching': self._extract_notable_pitching(boxscore),
+                'fielding': self._extract_notable_fielding(boxscore)
+            }
+
+            # Special Game Situations
             flags = game_info.get('flags', {})
             if any([flags.get('noHitter'), flags.get('perfectGame')]):
                 game_data['special_alert'] = {
                     'no_hitter': flags.get('noHitter', False),
-                    'perfect_game': flags.get('perfectGame', False)
+                    'perfect_game': flags.get('perfectGame', False),
+                    'grand_slam': flags.get('grandSlam', False),
+                    'triple_play': flags.get('triplePlay', False)
                 }
 
-            # Current game situation (only if game is live)
-            if game_info.get('status', {}).get('abstractGameState') == 'Live':
-                game_data['current_action'] = {
-                    'inning': f"{linescore.get('inningState', '')} {linescore.get('currentInning', '')}",
-                    'count': f"{linescore.get('balls', 0)}-{linescore.get('strikes', 0)}, {linescore.get('outs', 0)} out(s)",
-                    'bases': self._get_runners_narrative(plays.get('currentPlay', {}))
-                }
-
-            # Key plays that shaped the game
-            key_plays = self._extract_narrative_moments(plays.get('allPlays', []))
-            if key_plays:
-                game_data['key_plays'] = key_plays
-
-            # Standout performances
-            hitting = self._extract_notable_hitting(boxscore)
-            pitching = self._extract_notable_pitching(boxscore)
-            if hitting or pitching:
-                game_data['standouts'] = {}
-                if hitting:
-                    game_data['standouts']['hitting'] = hitting
-                if pitching:
-                    game_data['standouts']['pitching'] = pitching
-
-            # Game result (if complete)
+            # Game Result (if complete)
             if game_info.get('status', {}).get('abstractGameState') == 'Final':
                 decisions = raw_data.get('liveData', {}).get('decisions', {})
                 game_data['result'] = {
                     'winner': self._determine_winner(linescore.get('teams', {})),
-                    'winning_pitcher': decisions.get('winner', {}).get('fullName'),
-                    'save': decisions.get('save', {}).get('fullName') if decisions.get('save') else None
+                    'winning_pitcher': self._extract_player_info(decisions.get('winner', {})),
+                    'losing_pitcher': self._extract_player_info(decisions.get('loser', {})),
+                    'save': self._extract_player_info(decisions.get('save', {})) if decisions.get('save') else None,
+                    'winning_margin': abs(game_data['summary']['home_score'] - game_data['summary']['away_score']),
+                    'duration': game_info.get('gameInfo', {}).get('gameDurationMinutes')
                 }
             
             return game_data
             
         except Exception as e:
             raise Exception(f"Failed to process game data: {str(e)}")
+
+    def _extract_team_stats(self, team_data: Dict) -> Dict:
+        """Extract comprehensive team statistics."""
+        batting_stats = team_data.get('teamStats', {}).get('batting', {})
+        pitching_stats = team_data.get('teamStats', {}).get('pitching', {})
+        
+        return {
+            'batting': {
+                'runs': batting_stats.get('runs', 0),
+                'hits': batting_stats.get('hits', 0),
+                'doubles': batting_stats.get('doubles', 0),
+                'triples': batting_stats.get('triples', 0),
+                'home_runs': batting_stats.get('homeRuns', 0),
+                'rbi': batting_stats.get('rbi', 0),
+                'walks': batting_stats.get('baseOnBalls', 0),
+                'strikeouts': batting_stats.get('strikeOuts', 0),
+                'avg': batting_stats.get('avg', '.000'),
+                'obp': batting_stats.get('obp', '.000'),
+                'slg': batting_stats.get('slg', '.000'),
+                'ops': batting_stats.get('ops', '.000')
+            },
+            'pitching': {
+                'earned_runs': pitching_stats.get('earnedRuns', 0),
+                'strikeouts': pitching_stats.get('strikeOuts', 0),
+                'walks': pitching_stats.get('baseOnBalls', 0),
+                'hits_allowed': pitching_stats.get('hits', 0),
+                'home_runs_allowed': pitching_stats.get('homeRuns', 0),
+                'era': pitching_stats.get('era', '0.00'),
+                'whip': pitching_stats.get('whip', '0.00')
+            }
+        }
+
+    def _process_play(self, play: Dict) -> Dict:
+        """Process a single play with detailed information."""
+        return {
+            'inning': play.get('about', {}).get('inning'),
+            'half_inning': play.get('about', {}).get('halfInning'),
+            'description': play.get('result', {}).get('description'),
+            'event': play.get('result', {}).get('event'),
+            'is_scoring_play': play.get('about', {}).get('isScoringPlay', False),
+            'rbi': play.get('result', {}).get('rbi', 0),
+            'batter': self._extract_player_info(play.get('matchup', {}).get('batter', {})),
+            'pitcher': self._extract_player_info(play.get('matchup', {}).get('pitcher', {})),
+            'count': play.get('count', {}),
+            'runners': [
+                {
+                    'runner': self._extract_player_info(runner.get('details', {}).get('runner', {})),
+                    'start_base': runner.get('movement', {}).get('originBase'),
+                    'end_base': runner.get('movement', {}).get('end'),
+                    'is_scored': runner.get('movement', {}).get('isOut', False)
+                }
+                for runner in play.get('runners', [])
+            ]
+        }
+
+    def _group_plays_by_inning(self, plays: List[Dict]) -> Dict[str, List[Dict]]:
+        """Group plays by inning for easy inning-by-inning narrative."""
+        plays_by_inning = {}
+        for play in plays:
+            inning = play.get('about', {}).get('inning')
+            half = play.get('about', {}).get('halfInning')
+            key = f"{inning}_{half}"
+            
+            if key not in plays_by_inning:
+                plays_by_inning[key] = []
+                
+            plays_by_inning[key].append(self._process_play(play))
+        
+        return plays_by_inning
+
+    def _extract_notable_fielding(self, boxscore: Dict) -> List[Dict]:
+        """Extract notable fielding performances."""
+        standouts = []
+        
+        for team_type in ['home', 'away']:
+            team_players = boxscore.get('teams', {}).get(team_type, {}).get('players', {})
+            for player_id, player in team_players.items():
+                stats = player.get('stats', {}).get('fielding', {})
+                
+                # Look for exceptional fielding plays
+                if (stats.get('putOuts', 0) >= 5 or 
+                    stats.get('assists', 0) >= 3 or 
+                    stats.get('doublePlays', 0) >= 2):
+                    standouts.append({
+                        'name': player.get('person', {}).get('fullName'),
+                        'highlight': f"{stats.get('putOuts', 0)} PO, {stats.get('assists', 0)} A, {stats.get('errors', 0)} E"
+                    })
+        
+        return standouts
 
     def _extract_narrative_moments(self, plays: List) -> List[Dict]:
         """Extract only the most significant moments from the game."""

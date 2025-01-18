@@ -7,7 +7,11 @@ from functools import lru_cache
 class TextToSpeechService:
     def __init__(self):
         """Initialize the Google Cloud Text-to-Speech client."""
-        self.client = texttospeech.TextToSpeechClient()
+        try:
+            self.client = texttospeech.TextToSpeechClient()
+        except Exception as e:
+            print(f"Error initializing Text-to-Speech client: {str(e)}")
+            raise
 
     async def generate_audio(
         self,
@@ -30,6 +34,9 @@ class TextToSpeechService:
         Returns:
             bytes: The audio data in MP3 format
         """
+        if not text.strip():
+            raise ValueError("Empty text provided for audio generation")
+
         try:
             # Configure the synthesis input
             synthesis_input = texttospeech.SynthesisInput(text=text)
@@ -40,12 +47,13 @@ class TextToSpeechService:
                 name=voice_id,
             )
 
-            # Configure the audio encoding
+            # Configure the audio encoding with enhanced quality
             audio_config = texttospeech.AudioConfig(
                 audio_encoding=texttospeech.AudioEncoding.MP3,
-                speaking_rate=speaking_rate,
-                pitch=pitch,
+                speaking_rate=max(0.25, min(speaking_rate, 4.0)),  # Clamp to valid range
+                pitch=max(-20.0, min(pitch, 20.0)),  # Clamp to valid range
                 effects_profile_id=['headphone-class-device'],
+                sample_rate_hertz=24000,  # Higher quality audio
             )
 
             # Perform the text-to-speech request
@@ -55,6 +63,9 @@ class TextToSpeechService:
                 voice=voice,
                 audio_config=audio_config,
             )
+
+            if not response.audio_content:
+                raise ValueError("No audio content generated")
 
             return response.audio_content
             
@@ -79,11 +90,15 @@ class TextToSpeechService:
                 language_code=language_code
             )
             
+            if not voices or not voices.voices:
+                return []
+
             return [
                 {
                     'name': voice.name,
                     'gender': texttospeech.SsmlVoiceGender(voice.ssml_gender).name,
                     'language_codes': voice.language_codes,
+                    'natural_sample_rate_hertz': voice.natural_sample_rate_hertz
                 }
                 for voice in voices.voices
             ]
@@ -95,6 +110,7 @@ class TextToSpeechService:
     def chunk_text(text: str, max_chars: int = 5000) -> List[str]:
         """
         Split text into chunks that are within Google Cloud Text-to-Speech limits.
+        Improved to maintain sentence integrity and proper punctuation.
         
         Args:
             text: The text to split
@@ -103,33 +119,62 @@ class TextToSpeechService:
         Returns:
             list: List of text chunks
         """
-        words = text.split()
+        if not text:
+            return []
+
+        # Clean and normalize the text
+        text = text.strip().replace('\n', ' ').replace('  ', ' ')
+        
+        # If text is short enough, return as is
+        if len(text) <= max_chars:
+            return [text]
+
         chunks = []
         current_chunk = []
         current_length = 0
-
-        for word in words:
-            word_length = len(word) + 1  # +1 for the space
-            if current_length + word_length > max_chars:
-                # Find the nearest sentence end in the current chunk
-                chunk_text = ' '.join(current_chunk)
-                last_period = chunk_text.rfind('.')
-                if last_period != -1 and last_period > len(chunk_text) * 0.5:
-                    # Split at the last period if it's in the latter half
-                    first_part = chunk_text[:last_period + 1]
-                    remainder = chunk_text[last_period + 1:].strip()
-                    chunks.append(first_part)
-                    current_chunk = remainder.split() + [word]
+        sentences = text.split('. ')
+        
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+                
+            # Add period if it was removed by split
+            if not sentence.endswith('.'):
+                sentence += '.'
+                
+            sentence_length = len(sentence) + 1  # +1 for space
+            
+            if current_length + sentence_length > max_chars:
+                if current_chunk:
+                    chunks.append(' '.join(current_chunk).strip())
+                    current_chunk = [sentence]
+                    current_length = sentence_length
                 else:
-                    chunks.append(chunk_text)
-                    current_chunk = [word]
-                current_length = len(word)
+                    # If a single sentence is too long, split it at word boundaries
+                    words = sentence.split()
+                    temp_chunk = []
+                    temp_length = 0
+                    
+                    for word in words:
+                        word_length = len(word) + 1
+                        if temp_length + word_length > max_chars:
+                            if temp_chunk:
+                                chunks.append(' '.join(temp_chunk) + '.')
+                            temp_chunk = [word]
+                            temp_length = word_length
+                        else:
+                            temp_chunk.append(word)
+                            temp_length += word_length
+                    
+                    if temp_chunk:
+                        chunks.append(' '.join(temp_chunk) + '.')
             else:
-                current_chunk.append(word)
-                current_length += word_length
+                current_chunk.append(sentence)
+                current_length += sentence_length
 
         if current_chunk:
-            chunks.append(' '.join(current_chunk))
+            chunks.append(' '.join(current_chunk).strip())
 
         return chunks
 
@@ -154,11 +199,21 @@ class TextToSpeechService:
         Returns:
             bytes: The concatenated audio data in MP3 format
         """
+        if not text:
+            raise ValueError("No text provided for audio generation")
+
         try:
             chunks = self.chunk_text(text)
-            audio_chunks = []
+            if not chunks:
+                raise ValueError("Text chunking resulted in no valid chunks")
 
-            for chunk in chunks:
+            audio_chunks = []
+            total_chunks = len(chunks)
+
+            print(f"Processing {total_chunks} text chunks...")
+
+            for i, chunk in enumerate(chunks, 1):
+                print(f"Generating audio for chunk {i}/{total_chunks}")
                 chunk_audio = await self.generate_audio(
                     chunk,
                     voice_id,
@@ -166,7 +221,11 @@ class TextToSpeechService:
                     speaking_rate,
                     pitch,
                 )
-                audio_chunks.append(chunk_audio)
+                if chunk_audio:
+                    audio_chunks.append(chunk_audio)
+
+            if not audio_chunks:
+                raise ValueError("No audio chunks were generated")
 
             # Concatenate the audio chunks
             return b''.join(audio_chunks)

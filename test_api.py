@@ -145,33 +145,53 @@ async def test_api():
 
         # 5. Test Audio Generation
         print("\n5. Testing Audio Generation...")
-        if "story" in result:
-            audio_request = {
-                "text": result["story"][:500],  # First 500 chars for testing
-                "voice": "en-US-Neural2-D",
-                "language_code": "en-US",
-                "speaking_rate": 1.0,
-                "pitch": 0.0
-            }
-            
+        if isinstance(result, str):  # Check if result is a string (the story text)
             try:
-                async with session.post(
+                story_text = result
+                print(f"Processing story text ({len(story_text)} characters)...")
+                
+                # Prepare audio request with proper parameters
+                audio_request = {
+                    "text": story_text,
+                    "voice": "en-US-Neural2-D",
+                    "language_code": "en-US",
+                    "speaking_rate": 1.0,
+                    "pitch": 0.0
+                }
+                
+                # Make the request with proper headers
+                headers = {
+                    "Content-Type": "application/json",
+                    "Accept": "audio/mpeg"
+                }
+                
+                # Use make_request with expect_binary=True for audio content
+                audio_content = await make_request(
+                    session,
+                    "POST",
                     f"{base_url}/api/generate-audio",
-                    json=audio_request
-                ) as response:
-                    if response.status == 200:
-                        # Read the streaming response
-                        audio_content = await response.read()
-                        print("Audio generation successful")
-                        print(f"Received {len(audio_content)} bytes of audio data")
-                        
-                        # Save and play the audio
+                    json=audio_request,
+                    headers=headers,
+                    expect_binary=True
+                )
+                
+                if isinstance(audio_content, bytes):
+                    print(f"\nAudio generation successful!")
+                    print(f"Received {len(audio_content)} bytes of audio data")
+                    
+                    # Save and play the audio
+                    if len(audio_content) > 0:
                         play_audio(audio_content)
                     else:
-                        error_text = await response.text()
-                        print(f"Audio generation failed: {error_text}")
+                        print("Warning: Received empty audio content")
+                elif isinstance(audio_content, dict) and "error" in audio_content:
+                    print(f"Audio generation failed: {audio_content['error']}")
+                else:
+                    print("Unexpected response format from audio generation")
             except Exception as e:
                 print(f"Error during audio generation: {str(e)}")
+        else:
+            print("No valid story text available for audio generation")
 
         # 6. Test Team Roster
         print("\n6. Testing Team Roster API...")
@@ -264,6 +284,5 @@ def main():
     except Exception as e:
         print(f"\nTests failed: {str(e)}")
         sys.exit(1)
-
 if __name__ == "__main__":
     main() 
