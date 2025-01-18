@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "mlb-storyteller",
+  "private_key_id": "67ef6e5f1d7431f6333cdba6bdeff8f51f608919",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDIiAmVUULcYkfX\n4QC+5hZEyrfsGtrgI01dfSJobYGJIXCo7y1nraIYbKpJ3TRx9zUBnVezDTol64zk\npgAznkvzqqfjr3ddQuK1zxRoqKTeSz7b9g4S54+qI+6cUanvllxjCIXN/+T4S/eG\nG+koZiBoRBP/Ml5Brnou6FxAYfrGFgfPWJ1ArlGJ2bdmVLzNS0vYDx0CbQEQ1UT4\nYa6KPqJMzwMAV7qFzUpazEnEKXddCG7TjLwWRGceDOculVOO8cagQdAtTXNggXZ/\nUbKROtV+hKgaGerXWk617BWXphOMIFSe47B4H+i/3Fdzh1BmSEXPF+npWBdHjWJD\nqK9c7kdJAgMBAAECggEAERacoHOMC805O5GCN4JSb/rJaQ6Ry8teVqLo+XapdPbb\nS54UI7NlbojmCwTVaQfMpc5TcJ/mLmCQAVUPC9cHuGQ4yduEQ7eFK8KRheinIgVN\n/j8NzHkcoj5NIVeJMHBC/7J0eo09pRYOKgi7WfS3+sKgZJ0VcKnuYgxtfhQLY3FK\n2h/WErygFMfMnwYBfhaYWiSD31pAK5fg3OHhzprNtsysPZMAISZEwWGF7Dn7MBzS\nB6SN/sIowzNAzVbMcftf6YcDF1Stsb4py0qdunQtbypjlpBjslnUn3BaWlByZkUA\nk4W5PXKeR233Zk2RAlKpDwnJak3DE3jpE4bwxLdsTQKBgQD6fc7+MBYuA/KpVQWH\nV4xLPqAcpXVTVd6aDM2ZSU/86apiGMzPwsKOO45CXu3xgafiQ7HVNxj4MqeyEn0n\nr5qdGOkDMcN+1vFFGxODiLiHqJU7fAEO6WSNyNciTI4EeyyMJxhK1MpS7bP8df3P\nDXTK7D9sPSBIfGae7NxuwIhHfQKBgQDM8PgG+o87PNcqLNR5TxmGnz0DXyaSLTz8\no7EFkNj+0I4FtG60hv9TRQkMQSCM7F8iC4OA1Lvzm3ZxX1vUDgNQ3PdjHOW8RgC/\nyvj0THVWMnJaIpWqxHxcg76iJoMYSAs/kXwszRa6uw4QJUrrqhdQ3Y7uxs7aahxS\nKkaeKU+AvQKBgG6pj/3aDqJrmhPW/OdK9S70ztV4/3k+kWYrS9VxfwXz0RMfc7RB\njaQ6iWGnAKXWKu4aDAFvIvfboRxZcLNMsBjBPYfsvzpVCSgHizpr92HvR2aNJQaK\nc6Lz3J9JhOBT7l1IlEHS+kNiwkZBdky33CYd8vMFmjKLyuZhLA09v7cdAoGATFEr\nu8WQkvmsEmuRT/9RvR0NZnUHcwXfoSD/6devxuw5BwzS8O0YpZSesu6JxZC8OHxb\nIx2VRDlPWRaupn/1YiZ3BXScZIkY/FMEdE0IoOm2RbR9UZNL0FPLKKz4wpEJh0mR\nGUniPfUsXnzUsn+roRRwhqCIJTPAiiRuGbW+gm0CgYEAw6CVT9z/3opHZmJ+WEo9\n/2buUl8bkAzJcfCSg6lfPbCmhDmrpGks4jPRDfY4pKxSyp93Q86VkcTq34MjT2RK\nIsr5D0gJlsLT0k++mBqW3iSpevGXPVBrAX3/rWpQ4jlbxlap4ptqGKf7Ipcbk2F+\nN2I5/pbzWTH/2zD8+ygqX+4=\n-----END PRIVATE KEY-----\n",
+  "client_email": "mlb-storyteller@mlb-storyteller.iam.gserviceaccount.com",
+  "client_id": "109984937323990477121",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/mlb-storyteller%40mlb-storyteller.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
