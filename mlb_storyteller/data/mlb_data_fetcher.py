@@ -5,6 +5,9 @@ import os
 from dotenv import load_dotenv
 from mlb_storyteller.cache.redis_service import RedisService
 import json
+import time
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 load_dotenv()
 
@@ -17,7 +20,37 @@ class MLBDataFetcher:
         self.version = "v1.1"
         self.cache = RedisService()
         self.sport_id = 1  # MLB
+        
+        # Configure session with retries
+        self.session = requests.Session()
+        retries = Retry(
+            total=3,  # Number of retries
+            backoff_factor=0.5,  # Wait 0.5, 1, 2 seconds between retries
+            status_forcelist=[408, 429, 500, 502, 503, 504],  # Retry on these status codes
+        )
+        self.session.mount('http://', HTTPAdapter(max_retries=retries))
+        self.session.mount('https://', HTTPAdapter(max_retries=retries))
     
+    def _make_request(self, url: str, params: Optional[Dict] = None) -> Dict:
+        """Make HTTP request with retries and error handling."""
+        try:
+            response = self.session.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.Timeout:
+            raise Exception("Request timed out. Please try again.")
+        except requests.exceptions.ConnectionError:
+            raise Exception("Connection error. Please check your internet connection.")
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                raise Exception("Resource not found.")
+            elif e.response.status_code >= 500:
+                raise Exception("Server error. Please try again later.")
+            else:
+                raise Exception(f"HTTP error occurred: {str(e)}")
+        except Exception as e:
+            raise Exception(f"An error occurred: {str(e)}")
+
     def _process_endpoint_url(self, endpoint_url: str, pop_key: Optional[str] = None) -> pd.DataFrame:
         """
         Process MLB Stats API endpoint results.
@@ -69,15 +102,13 @@ class MLBDataFetcher:
         }
         
         try:
-            response = requests.get(endpoint, params=params)
-            response.raise_for_status()
-            schedule_data = response.json()
+            schedule_data = self._make_request(endpoint, params)
             
             # Cache for 1 hour
             await self.cache.set(cache_key, schedule_data, expire=3600)
             
             return schedule_data
-        except requests.exceptions.RequestException as e:
+        except Exception as e:
             raise Exception(f"Failed to fetch schedule: {str(e)}")
 
     async def get_game_data(self, game_pk: str) -> Dict:
@@ -99,9 +130,7 @@ class MLBDataFetcher:
         endpoint = f"{self.base_url}/{self.version}/game/{game_pk}/feed/live"
         
         try:
-            response = requests.get(endpoint)
-            response.raise_for_status()
-            game_data = response.json()
+            game_data = self._make_request(endpoint)
             
             # Process the raw game data
             processed_data = self._process_game_data(game_data)
@@ -111,8 +140,8 @@ class MLBDataFetcher:
             
             return processed_data
             
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 404:
+        except Exception as e:
+            if isinstance(e, requests.exceptions.HTTPError) and e.response.status_code == 404:
                 # Try to get schedule data for this game
                 schedule_data = await self._get_game_schedule(game_pk)
                 if schedule_data:
@@ -129,9 +158,7 @@ class MLBDataFetcher:
         }
         
         try:
-            response = requests.get(endpoint, params=params)
-            response.raise_for_status()
-            data = response.json()
+            data = self._make_request(endpoint, params)
             
             if not data.get('dates') or not data['dates'][0].get('games'):
                 return None
@@ -205,13 +232,11 @@ class MLBDataFetcher:
         params = {
             "season": season,
             "rosterType": "active",
-            "hydrate": "person(stats(type=season,season={season}))"
+            "hydrate": f"person(stats(type=season,season={season}))"
         }
         
         try:
-            response = requests.get(endpoint, params=params)
-            response.raise_for_status()
-            roster_data = response.json()
+            roster_data = self._make_request(endpoint, params)
             
             if not roster_data.get("roster"):
                 raise Exception(f"No roster data found for team ID {team_id}")
@@ -259,10 +284,8 @@ class MLBDataFetcher:
             await self.cache.set(cache_key, processed_roster, expire=3600)
             
             return processed_roster
-        except requests.exceptions.RequestException as e:
-            raise Exception(f"Failed to fetch team roster: {str(e)}")
         except Exception as e:
-            raise Exception(f"Error processing roster data: {str(e)}")
+            raise Exception(f"Failed to fetch team roster: {str(e)}")
 
     async def get_player_stats(self, player_id: str, season: Optional[int] = None) -> Dict:
         """
@@ -289,9 +312,7 @@ class MLBDataFetcher:
         }
         
         try:
-            response = requests.get(endpoint, params=params)
-            response.raise_for_status()
-            player_data = response.json()
+            player_data = self._make_request(endpoint, params)
             
             if "people" not in player_data or not player_data["people"]:
                 raise Exception(f"Player ID {player_id} not found")
@@ -315,7 +336,7 @@ class MLBDataFetcher:
             await self.cache.set(cache_key, processed_stats, expire=3600)
             
             return processed_stats
-        except requests.exceptions.RequestException as e:
+        except Exception as e:
             raise Exception(f"Failed to fetch player stats: {str(e)}")
 
     def _process_game_data(self, raw_data: Dict) -> Dict:

@@ -3,12 +3,71 @@ import os
 from typing import Optional, List, Dict
 import asyncio
 from functools import lru_cache
+from dotenv import load_dotenv
+from pathlib import Path
+import json
+from google.api_core import exceptions
+
+load_dotenv()
 
 class TextToSpeechService:
     def __init__(self):
         """Initialize the Google Cloud Text-to-Speech client."""
         try:
+            # Get credentials path and convert to absolute path if relative
+            credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+            if not credentials_path:
+                raise Exception("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
+                
+            # Convert to absolute path if relative
+            if not os.path.isabs(credentials_path):
+                credentials_path = os.path.abspath(credentials_path)
+                
+            if not os.path.exists(credentials_path):
+                raise Exception(f"Google Cloud credentials file not found at {credentials_path}")
+                
+            # Verify credentials file structure
+            try:
+                with open(credentials_path, 'r') as f:
+                    creds = json.load(f)
+                    if 'type' not in creds or creds['type'] != 'service_account':
+                        raise Exception("Invalid credentials file format - must be a service account key")
+                    print(f"Using service account: {creds.get('client_email', 'unknown')}")
+            except json.JSONDecodeError:
+                raise Exception("Invalid JSON in credentials file")
+                
+            # Update environment variable with absolute path
+            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+            print(f"Using Google Cloud credentials from: {credentials_path}")
+            
+            # Initialize client with explicit project
             self.client = texttospeech.TextToSpeechClient()
+            
+            # Test the client by listing available voices
+            try:
+                self.client.list_voices()
+                print("Successfully authenticated with Google Cloud Text-to-Speech API")
+            except exceptions.PermissionDenied as e:
+                raise Exception(
+                    "Permission denied. Please ensure:\n"
+                    "1. The Cloud Text-to-Speech API is enabled in your Google Cloud Console\n"
+                    "2. The service account has the 'Cloud Text-to-Speech API User' role\n"
+                    f"Service Account: {creds.get('client_email')}\n"
+                    f"Project ID: {creds.get('project_id')}\n"
+                    f"Error: {str(e)}"
+                )
+            except exceptions.Unauthenticated as e:
+                raise Exception(
+                    "Authentication failed. Please ensure:\n"
+                    "1. The service account key file is valid\n"
+                    "2. The GOOGLE_APPLICATION_CREDENTIALS environment variable points to the correct file\n"
+                    f"Service Account: {creds.get('client_email')}\n"
+                    f"Project ID: {creds.get('project_id')}\n"
+                    f"Error: {str(e)}"
+                )
+            except Exception as e:
+                raise Exception(f"Failed to access Text-to-Speech API: {str(e)}")
+                
         except Exception as e:
             print(f"Error initializing Text-to-Speech client: {str(e)}")
             raise

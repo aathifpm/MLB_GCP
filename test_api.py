@@ -22,35 +22,44 @@ async def make_request(session: aiohttp.ClientSession, method: str, url: str, ex
             else:
                 return await response.json()
     except Exception as e:
-        print(f"Request failed: {str(e)}")
+        print(f"Request failed: {type(e).__name__}: {str(e)}")
         return {"error": str(e)}
 
 def play_audio(audio_data: bytes) -> None:
-    """Save audio data to temp file and play it."""
+    """Save audio data to downloads folder and optionally play it."""
     try:
-        # Create temp file with .mp3 extension
-        temp_dir = tempfile.gettempdir()
+        # Create downloads directory if it doesn't exist
+        downloads_dir = os.path.join(os.getcwd(), "downloads")
+        if not os.path.exists(downloads_dir):
+            os.makedirs(downloads_dir)
+        
+        # Create filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        temp_file = os.path.join(temp_dir, f"story_narration_{timestamp}.mp3")
+        filename = f"story_narration_{timestamp}.mp3"
+        file_path = os.path.join(downloads_dir, filename)
         
         # Save audio data
-        with open(temp_file, 'wb') as f:
+        with open(file_path, 'wb') as f:
             f.write(audio_data)
         
-        print(f"\nSaved audio to: {temp_file}")
+        print(f"\nSaved audio to: {file_path}")
         
-        # Play audio based on platform
-        if sys.platform == 'win32':
-            os.startfile(temp_file)  # Windows
-        elif sys.platform == 'darwin':
-            subprocess.run(['open', temp_file])  # macOS
-        else:
-            subprocess.run(['xdg-open', temp_file])  # Linux
+        # Optionally play the audio based on platform
+        try:
+            if sys.platform == 'win32':
+                os.startfile(file_path)  # Windows
+            elif sys.platform == 'darwin':
+                subprocess.run(['open', file_path])  # macOS
+            else:
+                subprocess.run(['xdg-open', file_path])  # Linux
+                
+            print("Playing audio... (Press Ctrl+C to stop)")
+        except Exception as e:
+            print(f"Note: Could not auto-play audio: {str(e)}")
+            print("The audio file has been saved and can be played manually.")
             
-        print("Playing audio... (Press Ctrl+C to stop)")
-        
     except Exception as e:
-        print(f"Error playing audio: {str(e)}")
+        print(f"Error handling audio: {str(e)}")
 
 async def test_api():
     """Test the MLB Storyteller API endpoints."""
@@ -141,57 +150,71 @@ async def test_api():
         
         if result and "error" not in result:
             print("\nGenerated Story:")
-            print(json.dumps(result, indent=2))
+            if isinstance(result, str):
+                story_text = result
+                print(result)
+            else:
+                print(json.dumps(result, indent=2))
+                story_text = result
 
         # 5. Test Audio Generation
         print("\n5. Testing Audio Generation...")
-        if isinstance(result, str):  # Check if result is a string (the story text)
-            try:
-                story_text = result
-                print(f"Processing story text ({len(story_text)} characters)...")
+        if not story_text:
+            print("No story text available for audio generation")
+            return
+
+        # Remove markdown formatting if present
+        story_text = story_text.replace('**Dramatic Narrative:**\n\n', '')
+        story_text = story_text.strip()
+            
+        print(f"Processing story text ({len(story_text)} characters)...")
                 
-                # Prepare audio request with proper parameters
-                audio_request = {
-                    "text": story_text,
-                    "voice": "en-US-Neural2-D",
-                    "language_code": "en-US",
-                    "speaking_rate": 1.0,
-                    "pitch": 0.0
-                }
+        # Prepare audio request with proper parameters
+        audio_request = {
+            "text": story_text,
+            "voice": "en-US-Studio-O",
+            "language_code": "en-US",
+            "speaking_rate": 1.0,
+            "pitch": 0.0
+        }
                 
-                # Make the request with proper headers
-                headers = {
-                    "Content-Type": "application/json",
-                    "Accept": "audio/mpeg"
-                }
+        # Make the request with proper headers
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "audio/mpeg"
+        }
                 
-                # Use make_request with expect_binary=True for audio content
-                audio_content = await make_request(
-                    session,
-                    "POST",
-                    f"{base_url}/api/generate-audio",
-                    json=audio_request,
-                    headers=headers,
-                    expect_binary=True
-                )
-                
-                if isinstance(audio_content, bytes):
-                    print(f"\nAudio generation successful!")
-                    print(f"Received {len(audio_content)} bytes of audio data")
+        try:
+            # Use make_request with expect_binary=True for audio content
+            audio_content = await make_request(
+                session,
+                "POST",
+                f"{base_url}/api/audio/generate-audio",
+                json=audio_request,
+                headers=headers,
+                expect_binary=True
+            )
                     
-                    # Save and play the audio
-                    if len(audio_content) > 0:
-                        play_audio(audio_content)
-                    else:
-                        print("Warning: Received empty audio content")
-                elif isinstance(audio_content, dict) and "error" in audio_content:
-                    print(f"Audio generation failed: {audio_content['error']}")
+            if isinstance(audio_content, dict) and "error" in audio_content:
+                error_text = audio_content.get("error")
+                if isinstance(error_text, dict):
+                    error_detail = error_text.get("detail", str(error_text))
                 else:
-                    print("Unexpected response format from audio generation")
-            except Exception as e:
-                print(f"Error during audio generation: {str(e)}")
-        else:
-            print("No valid story text available for audio generation")
+                    error_detail = str(error_text)
+                print(f"Audio generation failed: {error_detail}")
+            elif isinstance(audio_content, bytes):
+                print(f"\nAudio generation successful!")
+                print(f"Received {len(audio_content)} bytes of audio data")
+                
+                # Save and play the audio
+                if len(audio_content) > 0:
+                    play_audio(audio_content)
+                else:
+                    print("Warning: Received empty audio content")
+            else:
+                print(f"Unexpected response format from audio generation: {type(audio_content)}")
+        except Exception as e:
+            print(f"Error during audio generation: {str(e)}")
 
         # 6. Test Team Roster
         print("\n6. Testing Team Roster API...")

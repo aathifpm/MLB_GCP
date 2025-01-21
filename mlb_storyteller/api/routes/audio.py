@@ -4,8 +4,12 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from ..dependencies import get_text_to_speech_service
 import io
+from google.api_core import exceptions
 
-router = APIRouter(prefix="/api", tags=["audio"])
+router = APIRouter(
+    prefix="/audio",
+    tags=["audio"]
+)
 
 class TextToSpeechRequest(BaseModel):
     text: str = Field(..., min_length=1, description="The text to convert to speech")
@@ -26,9 +30,32 @@ async def generate_audio(request: TextToSpeechRequest):
             raise HTTPException(status_code=400, detail="Empty text provided")
 
         # Get TTS service
-        tts_service = get_text_to_speech_service()
-        if not tts_service:
-            raise HTTPException(status_code=500, detail="Text-to-speech service not available")
+        try:
+            tts_service = get_text_to_speech_service()
+            if not tts_service:
+                raise HTTPException(status_code=500, detail="Text-to-speech service not available")
+        except Exception as e:
+            error_msg = str(e)
+            if "GOOGLE_APPLICATION_CREDENTIALS" in error_msg:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Google Cloud credentials not properly configured. Please check GOOGLE_APPLICATION_CREDENTIALS environment variable."
+                )
+            elif "Permission denied" in error_msg:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Permission denied: {error_msg}"
+                )
+            elif "Authentication failed" in error_msg:
+                raise HTTPException(
+                    status_code=401,
+                    detail=f"Authentication failed: {error_msg}"
+                )
+            else:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to initialize Text-to-Speech service: {error_msg}"
+                )
 
         # Generate audio content
         try:
@@ -39,8 +66,21 @@ async def generate_audio(request: TextToSpeechRequest):
                 speaking_rate=request.speaking_rate,
                 pitch=request.pitch,
             )
+        except exceptions.PermissionDenied as e:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Permission denied: {str(e)}"
+            )
+        except exceptions.Unauthenticated as e:
+            raise HTTPException(
+                status_code=401,
+                detail=f"Authentication failed: {str(e)}"
+            )
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Audio generation failed: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Audio generation failed: {str(e)}"
+            )
 
         # Validate audio content
         if not audio_content:

@@ -50,7 +50,7 @@ if os.path.exists(static_dir):
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
 # Include routers
-app.include_router(audio.router)
+app.include_router(audio.router, prefix="/api")
 
 # Health check endpoint
 @app.get("/health")
