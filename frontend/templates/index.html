@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLB Storyteller</title>
+    <link rel="stylesheet" href="../static/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Scroll Progress Indicator -->
+    <div class="scroll-progress"></div>
+
+    <div class="app-container">
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-container">
+                    <i class="fas fa-baseball-ball"></i>
+                    <h1>MLB Storyteller</h1>
+                </div>
+                <div class="health-status" id="healthStatus" role="status" aria-live="polite">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Checking system status...</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <section class="game-selection" aria-labelledby="gameSelectionTitle">
+                <div class="section-header">
+                    <h2 id="gameSelectionTitle"><i class="fas fa-calendar-alt"></i> Select a Game</h2>
+                    <div class="filters">
+                        <div class="select-wrapper">
+                            <i class="fas fa-calendar-year"></i>
+                            <select id="seasonSelect" class="select-input" aria-label="Select Season">
+                                <option value="2024">2024 Season</option>
+                                <option value="2023">2023 Season</option>
+                            </select>
+                        </div>
+                        <div class="select-wrapper">
+                            <i class="fas fa-trophy"></i>
+                            <select id="gameTypeSelect" class="select-input" aria-label="Select Game Type">
+                                <option value="R">Regular Season</option>
+                                <option value="P">Playoffs</option>
+                                <option value="S">Spring Training</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div id="gamesList" class="games-grid" role="list" aria-label="Available Games"></div>
+            </section>
+
+            <section class="story-preferences hidden" id="storyPreferences" aria-labelledby="preferencesTitle">
+                <div class="section-header">
+                    <h2 id="preferencesTitle"><i class="fas fa-pen-fancy"></i> Story Preferences</h2>
+                </div>
+                <form id="preferencesForm" class="preferences-form">
+                    <div class="preference-group">
+                        <label for="storyStyle"><i class="fas fa-palette"></i> Style</label>
+                        <div class="select-wrapper">
+                            <select id="storyStyle" name="style" class="select-input">
+                                <option value="dramatic">Dramatic</option>
+                                <option value="casual">Casual</option>
+                                <option value="analytical">Analytical</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="preference-group">
+                        <label><i class="fas fa-bullseye"></i> Focus Areas</label>
+                        <div class="checkbox-group" role="group" aria-label="Story Focus Areas">
+                            <label class="custom-checkbox">
+                                <input type="checkbox" name="focus" value="key_plays" checked>
+                                <span class="checkbox-label"><i class="fas fa-star"></i> Key Plays</span>
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" name="focus" value="standout_performances" checked>
+                                <span class="checkbox-label"><i class="fas fa-medal"></i> Standout Performances</span>
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" name="focus" value="game_summary" checked>
+                                <span class="checkbox-label"><i class="fas fa-chart-line"></i> Game Summary</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="preference-group">
+                        <label for="storyLength"><i class="fas fa-text-height"></i> Length</label>
+                        <div class="select-wrapper">
+                            <select id="storyLength" name="length" class="select-input">
+                                <option value="short">Short (~2 min)</option>
+                                <option value="medium" selected>Medium (~4 min)</option>
+                                <option value="long">Long (~6 min)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-feedback hidden" id="formError">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span class="error-message"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="generateStoryBtn">
+                        <i class="fas fa-magic"></i>
+                        <span class="btn-text">Generate Story</span>
+                        <div class="btn-loader hidden"></div>
+                    </button>
+                </form>
+            </section>
+
+            <section class="story-output hidden" id="storyOutput" aria-labelledby="storyTitle">
+                <div class="section-header">
+                    <h2 id="storyTitle"><i class="fas fa-book-open"></i> Your Story</h2>
+                    <button id="copyStoryBtn" class="btn btn-secondary" aria-label="Copy story to clipboard">
+                        <i class="fas fa-copy"></i> Copy Text
+                    </button>
+                </div>
+                <div class="story-content">
+                    <div id="storyText" class="story-text" role="article"></div>
+                    <div class="audio-controls card">
+                        <h3><i class="fas fa-microphone-alt"></i> Voice Settings</h3>
+                        <div class="select-wrapper">
+                            <i class="fas fa-user-voice"></i>
+                            <select id="voiceSelect" class="select-input" aria-label="Select narrator voice">
+                                <option value="en-US-Studio-O">Male Narrator</option>
+                                <option value="en-US-Studio-M">Female Narrator</option>
+                            </select>
+                        </div>
+                        <div class="audio-settings">
+                            <div class="setting-group">
+                                <label for="speedRange"><i class="fas fa-tachometer-alt"></i> Speed</label>
+                                <div class="range-container">
+                                    <input type="range" id="speedRange" min="0.5" max="2" step="0.1" value="1" aria-label="Adjust speaking speed">
+                                    <span class="range-value">1.0x</span>
+                                </div>
+                            </div>
+                            <div class="setting-group">
+                                <label for="pitchRange"><i class="fas fa-wave-square"></i> Pitch</label>
+                                <div class="range-container">
+                                    <input type="range" id="pitchRange" min="-10" max="10" step="1" value="0" aria-label="Adjust voice pitch">
+                                    <span class="range-value">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="generateAudioBtn" class="btn btn-secondary">
+                            <i class="fas fa-play-circle"></i> Generate Audio
+                        </button>
+                    </div>
+                    <div id="audioPlayer" class="audio-player card hidden">
+                        <h3><i class="fas fa-headphones"></i> Listen to Your Story</h3>
+                        <audio controls id="storyAudio"></audio>
+                        <div class="audio-actions">
+                            <a id="downloadLink" class="btn btn-secondary" download="story_narration.mp3">
+                                <i class="fas fa-download"></i> Download Audio
+                            </a>
+                            <button id="shareAudioBtn" class="btn btn-primary">
+                                <i class="fas fa-share-alt"></i> Share
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <div class="footer-content">
+                <p><i class="fas fa-baseball-ball"></i> MLB Storyteller &copy; 2024</p>
+                <div class="social-links">
+                    <a href="#" class="social-link" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="social-link" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                    <a href="#" class="social-link" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden" role="alert" aria-busy="true">
+        <div class="loader"></div>
+        <p class="loading-text">Processing your request...</p>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer"></div>
+
+    <script src="../static/js/app.js"></script>
+</body>
+</html> 
