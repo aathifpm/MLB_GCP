@@ -152,53 +152,98 @@
                 <div class="story-content">
                     <div id="storyText" class="story-text" role="article"></div>
                     <div class="audio-controls card">
-                        <h3><i class="fas fa-microphone-alt"></i> Voice Settings</h3>
-                        <div class="preferences-section">
-                            <h3>Voice Settings</h3>
-                            <div class="form-group">
-                                <label for="languageSelect">Language:</label>
-                                <select id="languageSelect" class="form-control">
-                                    <option value="en-US">English (US)</option>
-                                    <option value="es-ES">Spanish (Spain)</option>
-                                    <option value="es-US">Spanish (US)</option>
-                                    <option value="ja-JP">Japanese</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="voiceSelect">Voice:</label>
-                                <select id="voiceSelect" class="form-control">
-                                    <option value="">Loading voices...</option>
-                                </select>
-                            </div>
+                        <h3><i class="fas fa-microphone-alt"></i> Narration Settings</h3>
+                        <div class="narration-tabs">
+                            <button class="tab-btn active" data-tab="voice">
+                                <i class="fas fa-user-voice"></i> Voice
+                            </button>
+                            <button class="tab-btn" data-tab="advanced">
+                                <i class="fas fa-sliders-h"></i> Advanced
+                            </button>
                         </div>
-                        <div class="audio-settings">
-                            <div class="setting-group">
-                                <label for="speedRange"><i class="fas fa-tachometer-alt"></i> Speed</label>
-                                <div class="range-container">
-                                    <input type="range" id="speedRange" min="0.5" max="2" step="0.1" value="1" aria-label="Adjust speaking speed">
-                                    <span class="range-value">1.0x</span>
+                        
+                        <div class="tab-content" id="voiceTab">
+                            <div class="voice-settings">
+                                <div class="form-group">
+                                    <label for="languageSelect">
+                                        <i class="fas fa-globe"></i> Language
+                                    </label>
+                                    <select id="languageSelect" class="form-control">
+                                        <option value="en-US">English (US)</option>
+                                        <option value="es-ES">Spanish (Spain)</option>
+                                        <option value="es-US">Spanish (US)</option>
+                                        <option value="ja-JP">Japanese</option>
+                                    </select>
                                 </div>
-                            </div>
-                            <div class="setting-group">
-                                <label for="pitchRange"><i class="fas fa-wave-square"></i> Pitch</label>
-                                <div class="range-container">
-                                    <input type="range" id="pitchRange" min="-10" max="10" step="1" value="0" aria-label="Adjust voice pitch">
-                                    <span class="range-value">0</span>
+                                <div class="form-group">
+                                    <label for="voiceSelect">
+                                        <i class="fas fa-microphone"></i> Voice
+                                    </label>
+                                    <select id="voiceSelect" class="form-control">
+                                        <option value="">Loading voices...</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
-                        <button id="generateAudioBtn" class="btn btn-secondary">
-                            <i class="fas fa-play-circle"></i>
-                            <span class="btn-text">Generate Audio</span>
-                            <div class="btn-loader hidden"></div>
-                        </button>
+                        
+                        <div class="tab-content hidden" id="advancedTab">
+                            <div class="advanced-settings">
+                                <div class="setting-group">
+                                    <label for="speedRange">
+                                        <i class="fas fa-tachometer-alt"></i> Speed
+                                        <span class="setting-value" id="speedValue">1.0x</span>
+                                    </label>
+                                    <div class="range-container">
+                                        <input type="range" id="speedRange" 
+                                               min="0.5" max="2" step="0.1" value="1" 
+                                               aria-label="Adjust speaking speed">
+                                        <div class="range-ticks">
+                                            <span>0.5x</span>
+                                            <span>1x</span>
+                                            <span>2x</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="setting-group">
+                                    <label for="pitchRange">
+                                        <i class="fas fa-wave-square"></i> Pitch
+                                        <span class="setting-value" id="pitchValue">0</span>
+                                    </label>
+                                    <div class="range-container">
+                                        <input type="range" id="pitchRange" 
+                                               min="-10" max="10" step="1" value="0" 
+                                               aria-label="Adjust voice pitch">
+                                        <div class="range-ticks">
+                                            <span>-10</span>
+                                            <span>0</span>
+                                            <span>+10</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="narration-actions">
+                            <button id="previewVoiceBtn" class="btn btn-outline">
+                                <i class="fas fa-headphones"></i>
+                                <span class="btn-text">Preview Voice</span>
+                            </button>
+                            <button id="generateAudioBtn" class="btn btn-primary">
+                                <i class="fas fa-play-circle"></i>
+                                <span class="btn-text">Generate Audio</span>
+                                <div class="btn-loader hidden"></div>
+                            </button>
+                        </div>
                     </div>
+                    
                     <div id="audioPlayer" class="audio-player card hidden">
                         <h3><i class="fas fa-headphones"></i> Listen to Your Story</h3>
-                        <audio controls id="storyAudio"></audio>
+                        <div class="audio-visualizer">
+                            <audio controls id="storyAudio"></audio>
+                        </div>
                         <div class="audio-actions">
                             <a id="downloadLink" class="btn btn-secondary" download="story_narration.mp3">
-                                <i class="fas fa-download"></i> Download Audio
+                                <i class="fas fa-download"></i> Download
                             </a>
                             <button id="shareAudioBtn" class="btn btn-primary">
                                 <i class="fas fa-share-alt"></i> Share

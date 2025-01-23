@@ -34,7 +34,12 @@ const elements = {
     generateStoryBtn: document.getElementById('generateStoryBtn'),
     formError: document.getElementById('formError'),
     formErrorMessage: document.getElementById('formError').querySelector('.error-message'),
-    languageSelect: document.getElementById('languageSelect')
+    languageSelect: document.getElementById('languageSelect'),
+    previewVoiceBtn: document.getElementById('previewVoiceBtn'),
+    tabButtons: document.querySelectorAll('.tab-btn'),
+    tabContents: document.querySelectorAll('.tab-content'),
+    speedValue: document.getElementById('speedValue'),
+    pitchValue: document.getElementById('pitchValue'),
 };
 
 // State
@@ -458,6 +463,95 @@ async function shareAudio() {
     }
 }
 
+// Add tab switching functionality
+function setupTabs() {
+    elements.tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const tabName = button.dataset.tab;
+            
+            // Update active tab button
+            elements.tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            // Show selected tab content
+            elements.tabContents.forEach(content => {
+                if (content.id === `${tabName}Tab`) {
+                    content.classList.remove('hidden');
+                } else {
+                    content.classList.add('hidden');
+                }
+            });
+        });
+    });
+}
+
+// Update range input display values
+function setupRangeInputs() {
+    const updateRangeValue = (input, valueDisplay) => {
+        const value = input.value;
+        valueDisplay.textContent = input.id === 'speedRange' ? `${value}x` : value;
+    };
+
+    // Speed range
+    elements.speedRange.addEventListener('input', () => {
+        updateRangeValue(elements.speedRange, elements.speedValue);
+    });
+
+    // Pitch range
+    elements.pitchRange.addEventListener('input', () => {
+        updateRangeValue(elements.pitchRange, elements.pitchValue);
+    });
+}
+
+// Add voice preview functionality
+async function previewVoice() {
+    const voice = elements.voiceSelect.value;
+    if (!voice) {
+        showToast('Please select a voice first', 'error');
+        return;
+    }
+
+    const previewText = "Hello! This is how I will narrate your story.";
+    const languageCode = elements.languageSelect.value;
+    const speed = elements.speedRange.value;
+    const pitch = elements.pitchRange.value;
+
+    try {
+        setButtonLoading(elements.previewVoiceBtn, true);
+        
+        const response = await fetch(`${API_BASE_URL}${ENDPOINTS.generateAudio}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                text: previewText,
+                voice: voice,
+                language_code: languageCode,
+                speaking_rate: parseFloat(speed),
+                pitch: parseFloat(pitch)
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to generate preview');
+        }
+
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        
+        const previewAudio = new Audio(audioUrl);
+        previewAudio.play();
+        
+        showToast('Playing voice preview', 'success');
+    } catch (error) {
+        console.error('Error previewing voice:', error);
+        showToast('Failed to preview voice', 'error');
+    } finally {
+        setButtonLoading(elements.previewVoiceBtn, false);
+    }
+}
+
 // Setup event listeners with enhanced interaction handling
 function setupEventListeners() {
     elements.seasonSelect.addEventListener('change', loadGames);
@@ -521,6 +615,12 @@ function setupEventListeners() {
     elements.languageSelect.addEventListener('change', (e) => {
         updateVoiceOptions(e.target.value);
     });
+
+    elements.previewVoiceBtn.addEventListener('click', previewVoice);
+    
+    // Setup tabs and range inputs
+    setupTabs();
+    setupRangeInputs();
 }
 
 // Loading overlay

@@ -936,4 +936,178 @@ html {
     .voice-settings {
         grid-template-columns: repeat(2, 1fr);
     }
+}
+
+/* Narration Section Styles */
+.narration-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 0.5rem 1rem;
+    font-size: 0.95rem;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tab-btn i {
+    font-size: 1rem;
+}
+
+.tab-btn.active {
+    color: var(--primary-color);
+    background: rgba(var(--primary-rgb), 0.1);
+}
+
+.tab-content {
+    display: block;
+    opacity: 1;
+    transition: all 0.3s ease;
+}
+
+.tab-content.hidden {
+    display: none;
+    opacity: 0;
+}
+
+.voice-settings, .advanced-settings {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.setting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.setting-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+.setting-value {
+    margin-left: auto;
+    color: var(--text-light);
+    font-size: 0.9rem;
+    font-weight: normal;
+}
+
+.range-container {
+    position: relative;
+    padding: 0.5rem 0;
+}
+
+.range-ticks {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    color: var(--text-light);
+    font-size: 0.8rem;
+}
+
+input[type="range"] {
+    width: 100%;
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    appearance: none;
+    cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+.narration-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-outline {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.btn-outline:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: rgba(var(--primary-rgb), 0.05);
+}
+
+.audio-visualizer {
+    background: var(--background-color);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+audio {
+    width: 100%;
+    height: 40px;
+    border-radius: 0.5rem;
+}
+
+audio::-webkit-media-controls-panel {
+    background: var(--background-color);
+}
+
+audio::-webkit-media-controls-play-button,
+audio::-webkit-media-controls-mute-button {
+    background-color: var(--primary-color);
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+audio::-webkit-media-controls-play-button:hover,
+audio::-webkit-media-controls-mute-button:hover {
+    transform: scale(1.1);
+}
+
+audio::-webkit-media-controls-current-time-display,
+audio::-webkit-media-controls-time-remaining-display {
+    color: var(--text-color);
+    font-family: 'Poppins', sans-serif;
+}
+
+audio::-webkit-media-controls-timeline {
+    background: var(--border-color);
+    border-radius: 2px;
+    height: 4px;
+}
+
+audio::-webkit-media-controls-volume-slider {
+    background: var(--border-color);
+    border-radius: 2px;
+    height: 4px;
 } 
