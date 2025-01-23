@@ -258,15 +258,24 @@ async function generateStory(preferences) {
     showLoading();
 
     try {
+        // Log the request data for debugging
+        console.log('Selected Game ID:', selectedGameId);
+        console.log('Preferences:', preferences);
+
         // Format game_id as string and ensure preferences are valid
         const requestData = {
             game_id: String(selectedGameId),
             preferences: {
                 style: preferences.style || 'dramatic',
-                focus: preferences.focus,
-                length: preferences.length || 'medium'
+                focus_areas: preferences.focus,
+                story_length: preferences.length || 'medium',
+                include_player_stats: true,
+                highlight_key_moments: true,
+                tone: preferences.style
             }
         };
+
+        console.log('Sending request data:', requestData);
 
         const response = await fetch(`${API_BASE_URL}${ENDPOINTS.generateStory}`, {
             method: 'POST',
@@ -277,17 +286,21 @@ async function generateStory(preferences) {
             body: JSON.stringify(requestData)
         });
         
-        const data = await response.json();
-        
         if (!response.ok) {
+            const data = await response.json();
+            console.error('Server response:', data);
             const errorMessage = data.detail || data.message || 'Failed to generate story';
             throw new Error(errorMessage);
         }
         
+        const data = await response.json();
+        console.log('Server response:', data);
+        
         // Handle different response formats
         currentStoryText = typeof data === 'string' ? data : 
                          data.story ? data.story :
-                         data.content ? data.content : '';
+                         data.content ? data.content :
+                         data.text ? data.text : '';
         
         if (!currentStoryText) {
             throw new Error('No story content received');
@@ -398,25 +411,31 @@ function setupEventListeners() {
 
         const formData = new FormData(e.target);
         
-        // Validate form data
+        // Get and validate focus areas
         const focus = Array.from(formData.getAll('focus'));
         if (focus.length === 0) {
             showFormError('Please select at least one focus area');
             return;
         }
 
-        const preferences = {
-            style: formData.get('style'),
-            focus: focus,
-            length: formData.get('length')
-        };
+        // Get other preferences
+        const style = formData.get('style');
+        const length = formData.get('length');
 
         // Validate all required fields
-        if (!preferences.style || !preferences.length) {
+        if (!style || !length) {
             showFormError('Please fill in all required fields');
             return;
         }
 
+        // Create preferences object
+        const preferences = {
+            style: style,
+            focus: focus,
+            length: length
+        };
+
+        console.log('Form preferences:', preferences);
         await generateStory(preferences);
     });
     

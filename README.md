@@ -23,7 +23,10 @@ mlb_storyteller/
 ```
 
 ## Setup and Installation
-[To be added]
+Docker setup : 
+```
+docker-compose up -d
+```
 
 ## Development Roadmap
 1. Data Integration Layer
