@@ -5,7 +5,8 @@ const ENDPOINTS = {
     schedule: '/schedule',
     games: '/games',
     generateStory: '/generate-story',
-    generateAudio: '/api/audio/generate-audio'
+    generateAudio: '/api/audio/generate-audio',
+    voices: '/api/audio/voices'
 };
 
 // DOM Elements
@@ -32,7 +33,8 @@ const elements = {
     header: document.querySelector('.header'),
     generateStoryBtn: document.getElementById('generateStoryBtn'),
     formError: document.getElementById('formError'),
-    formErrorMessage: document.getElementById('formError').querySelector('.error-message')
+    formErrorMessage: document.getElementById('formError').querySelector('.error-message'),
+    languageSelect: document.getElementById('languageSelect')
 };
 
 // State
@@ -46,6 +48,7 @@ let storyDisplayTimeout = null;
 async function init() {
     await checkHealth();
     await loadGames();
+    await updateVoiceOptions('en-US');
     setupEventListeners();
     setupScrollHandlers();
     setupRangeInputs();
@@ -225,12 +228,20 @@ function selectGame(gameId, card) {
 
 // Add these utility functions
 function setButtonLoading(button, isLoading) {
+    if (!button) return;
+    
     const btnText = button.querySelector('.btn-text');
     const btnLoader = button.querySelector('.btn-loader');
     
     button.disabled = isLoading;
-    btnText.style.opacity = isLoading ? '0.7' : '1';
-    btnLoader.classList.toggle('hidden', !isLoading);
+    
+    if (btnText) {
+        btnText.style.opacity = isLoading ? '0.7' : '1';
+    }
+    
+    if (btnLoader) {
+        btnLoader.classList.toggle('hidden', !isLoading);
+    }
 }
 
 function showFormError(message) {
@@ -359,30 +370,43 @@ async function generateStory(preferences) {
 
 // Generate audio with enhanced error handling
 async function generateAudio() {
+    const generateBtn = elements.generateAudioBtn;
+    
     if (!currentStoryText) {
         showToast('Please generate a story first', 'error');
         return;
     }
     
-    showLoading();
+    const languageCode = elements.languageSelect.value;
+    const voice = elements.voiceSelect.value;
+    const speed = elements.speedRange.value;
+    const pitch = elements.pitchRange.value;
+    
+    if (!voice) {
+        showToast('Please select a voice', 'error');
+        return;
+    }
+    
     try {
+        setButtonLoading(generateBtn, true);
+        showLoading();
+        
         const response = await fetch(`${API_BASE_URL}${ENDPOINTS.generateAudio}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'audio/mpeg'
             },
             body: JSON.stringify({
                 text: currentStoryText,
-                voice: elements.voiceSelect.value,
-                language_code: 'en-US',
-                speaking_rate: parseFloat(elements.speedRange.value),
-                pitch: parseFloat(elements.pitchRange.value)
+                voice: voice,
+                language_code: languageCode,
+                speaking_rate: parseFloat(speed),
+                pitch: parseFloat(pitch)
             })
         });
         
         if (!response.ok) {
-            throw new Error(`Audio generation failed: ${response.statusText}`);
+            throw new Error('Failed to generate audio');
         }
         
         const audioBlob = await response.blob();
@@ -390,14 +414,18 @@ async function generateAudio() {
         
         elements.storyAudio.src = audioUrl;
         elements.downloadLink.href = audioUrl;
+        elements.downloadLink.classList.remove('hidden');
+        elements.shareAudioBtn.classList.remove('hidden');
         elements.audioPlayer.classList.remove('hidden');
         
         showToast('Audio generated successfully', 'success');
     } catch (error) {
-        console.error('Failed to generate audio:', error);
-        showToast('Failed to generate audio. Please try again.', 'error');
+        console.error('Error generating audio:', error);
+        showToast('Failed to generate audio', 'error');
+    } finally {
+        setButtonLoading(generateBtn, false);
+        hideLoading();
     }
-    hideLoading();
 }
 
 // Copy story text to clipboard
@@ -488,6 +516,11 @@ function setupEventListeners() {
     elements.preferencesForm.querySelectorAll('input, select').forEach(input => {
         input.addEventListener('change', hideFormError);
     });
+
+    // Add language selection handler
+    elements.languageSelect.addEventListener('change', (e) => {
+        updateVoiceOptions(e.target.value);
+    });
 }
 
 // Loading overlay
@@ -503,6 +536,50 @@ function hideLoading() {
 window.addEventListener('beforeunload', () => {
     clearTimeout(storyDisplayTimeout);
 });
+
+// Add these new functions
+async function loadVoices(languageCode) {
+    try {
+        const response = await fetch(`${API_BASE_URL}${ENDPOINTS.voices}?language_code=${languageCode}`);
+        if (!response.ok) {
+            throw new Error('Failed to load voices');
+        }
+        const data = await response.json();
+        return data.voices;
+    } catch (error) {
+        console.error('Error loading voices:', error);
+        showToast('Failed to load voices', 'error');
+        return [];
+    }
+}
+
+async function updateVoiceOptions(languageCode) {
+    const voiceSelect = elements.voiceSelect;
+    voiceSelect.innerHTML = '<option value="">Loading voices...</option>';
+    
+    const voices = await loadVoices(languageCode);
+    voiceSelect.innerHTML = '';
+    
+    if (voices.length === 0) {
+        voiceSelect.innerHTML = '<option value="">No voices available</option>';
+        return;
+    }
+    
+    voices.forEach(voice => {
+        const option = document.createElement('option');
+        option.value = voice.name;
+        // Format the display name to be more user-friendly
+        const gender = voice.gender.toLowerCase();
+        const voiceType = voice.name.includes('Neural') ? 'Neural' : 'Standard';
+        option.textContent = `${gender} (${voiceType})`;
+        voiceSelect.appendChild(option);
+    });
+    
+    // Select the first voice by default
+    if (voiceSelect.options.length > 0) {
+        voiceSelect.selectedIndex = 0;
+    }
+}
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', init); 

@@ -153,12 +153,23 @@
                     <div id="storyText" class="story-text" role="article"></div>
                     <div class="audio-controls card">
                         <h3><i class="fas fa-microphone-alt"></i> Voice Settings</h3>
-                        <div class="select-wrapper">
-                            <i class="fas fa-user-voice"></i>
-                            <select id="voiceSelect" class="select-input" aria-label="Select narrator voice">
-                                <option value="en-US-Studio-O">Male Narrator</option>
-                                <option value="en-US-Studio-M">Female Narrator</option>
-                            </select>
+                        <div class="preferences-section">
+                            <h3>Voice Settings</h3>
+                            <div class="form-group">
+                                <label for="languageSelect">Language:</label>
+                                <select id="languageSelect" class="form-control">
+                                    <option value="en-US">English (US)</option>
+                                    <option value="es-ES">Spanish (Spain)</option>
+                                    <option value="es-US">Spanish (US)</option>
+                                    <option value="ja-JP">Japanese</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="voiceSelect">Voice:</label>
+                                <select id="voiceSelect" class="form-control">
+                                    <option value="">Loading voices...</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="audio-settings">
                             <div class="setting-group">
@@ -177,7 +188,9 @@
                             </div>
                         </div>
                         <button id="generateAudioBtn" class="btn btn-secondary">
-                            <i class="fas fa-play-circle"></i> Generate Audio
+                            <i class="fas fa-play-circle"></i>
+                            <span class="btn-text">Generate Audio</span>
+                            <div class="btn-loader hidden"></div>
                         </button>
                     </div>
                     <div id="audioPlayer" class="audio-player card hidden">
