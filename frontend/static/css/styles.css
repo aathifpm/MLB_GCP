@@ -117,9 +117,9 @@ section {
     padding: 1.5rem;
     margin-bottom: 2rem;
     box-shadow: var(--card-shadow);
-    opacity: 0;
-    transform: translateY(20px);
-    animation: fadeInUp 0.6s var(--smooth) forwards;
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.3s var(--smooth), transform 0.3s var(--smooth);
 }
 
 .section-header {
@@ -385,6 +385,18 @@ h2 i {
     transition: 0s;
 }
 
+.story-output {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.3s var(--smooth);
+    display: none;
+}
+
+.story-output.hidden {
+    display: none;
+    opacity: 0;
+}
+
 .story-text {
     background-color: var(--background-color);
     padding: 1.5rem;
@@ -393,17 +405,52 @@ h2 i {
     white-space: pre-wrap;
     line-height: 1.8;
     font-size: 1.1rem;
-    position: relative;
     opacity: 0;
     transform: translateY(20px);
-    animation: fadeInUp 0.6s var(--smooth) forwards;
+    transition: opacity 0.5s var(--smooth), transform 0.5s var(--smooth);
 }
 
-@keyframes fadeInUp {
+.story-text.fade-in {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Ensure story section stays visible */
+section.story-output {
+    min-height: 200px;
+    height: auto;
+    overflow: visible;
+    opacity: 1;
+    transform: none;
+}
+
+/* Add new keyframes for story animations */
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
     to {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* Update section animations */
+section:not(.hidden) {
+    animation: fadeInSlide 0.5s var(--smooth) forwards;
+}
+
+/* Ensure proper z-index stacking */
+.story-output {
+    position: relative;
+    z-index: 1;
+}
+
+/* Add focus styles for better accessibility */
+.story-text:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
 }
 
 .card {

@@ -39,6 +39,8 @@ const elements = {
 let selectedGameId = null;
 let currentStoryText = '';
 let lastScrollTop = 0;
+let isGeneratingStory = false;
+let storyDisplayTimeout = null;
 
 // Initialize the application
 async function init() {
@@ -212,8 +214,9 @@ function selectGame(gameId, card) {
     card.classList.add('selected');
     card.setAttribute('aria-selected', 'true');
     
+    // Reset story section
+    updateStoryDisplay('', false);
     elements.storyPreferences.classList.remove('hidden');
-    elements.storyOutput.classList.add('hidden');
     
     // Smooth scroll to preferences
     elements.storyPreferences.scrollIntoView({ behavior: 'smooth' });
@@ -240,29 +243,59 @@ function hideFormError() {
     elements.formError.classList.add('hidden');
 }
 
+// Add this new function for managing story display
+function updateStoryDisplay(text, shouldShow = true) {
+    clearTimeout(storyDisplayTimeout);
+    
+    if (shouldShow && text) {
+        // First, make sure the container is visible
+        elements.storyOutput.style.display = 'block';
+        elements.storyOutput.classList.remove('hidden');
+        
+        // Reset animation classes
+        elements.storyText.classList.remove('no-animation');
+        void elements.storyText.offsetWidth; // Force reflow
+        
+        // Update content
+        elements.storyText.textContent = text;
+        
+        // Add animation class
+        elements.storyText.classList.add('fade-in');
+        
+        // Scroll after a short delay
+        storyDisplayTimeout = setTimeout(() => {
+            elements.storyOutput.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    } else {
+        elements.storyText.textContent = '';
+        elements.storyOutput.classList.add('hidden');
+        elements.storyOutput.style.display = 'none';
+    }
+}
+
 // Generate story with enhanced error handling and validation
 async function generateStory(preferences) {
+    if (isGeneratingStory) {
+        showToast('Story generation in progress...', 'info');
+        return;
+    }
+
     if (!selectedGameId) {
         showFormError('Please select a game first');
         return;
     }
 
-    // Validate preferences
     if (!preferences.focus || preferences.focus.length === 0) {
         showFormError('Please select at least one focus area');
         return;
     }
     
+    isGeneratingStory = true;
     hideFormError();
     setButtonLoading(elements.generateStoryBtn, true);
     showLoading();
 
     try {
-        // Log the request data for debugging
-        console.log('Selected Game ID:', selectedGameId);
-        console.log('Preferences:', preferences);
-
-        // Format game_id as string and ensure preferences are valid
         const requestData = {
             game_id: String(selectedGameId),
             preferences: {
@@ -275,7 +308,7 @@ async function generateStory(preferences) {
             }
         };
 
-        console.log('Sending request data:', requestData);
+        console.log('Sending request:', requestData);
 
         const response = await fetch(`${API_BASE_URL}${ENDPOINTS.generateStory}`, {
             method: 'POST',
@@ -286,17 +319,14 @@ async function generateStory(preferences) {
             body: JSON.stringify(requestData)
         });
         
-        if (!response.ok) {
-            const data = await response.json();
-            console.error('Server response:', data);
-            const errorMessage = data.detail || data.message || 'Failed to generate story';
-            throw new Error(errorMessage);
-        }
-        
         const data = await response.json();
-        console.log('Server response:', data);
+        console.log('Received response:', data);
         
-        // Handle different response formats
+        if (!response.ok) {
+            throw new Error(data.detail || data.message || 'Failed to generate story');
+        }
+
+        // Process the response
         currentStoryText = typeof data === 'string' ? data : 
                          data.story ? data.story :
                          data.content ? data.content :
@@ -306,22 +336,22 @@ async function generateStory(preferences) {
             throw new Error('No story content received');
         }
 
-        // Update UI
-        elements.storyText.textContent = currentStoryText;
-        elements.storyOutput.classList.remove('hidden');
+        // Clear any existing content first
+        elements.storyText.textContent = '';
         elements.audioPlayer.classList.add('hidden');
         
-        // Smooth scroll to story
-        elements.storyOutput.scrollIntoView({ behavior: 'smooth' });
-        showToast('Story generated successfully', 'success');
+        // Update the display with a slight delay to ensure proper animation
+        setTimeout(() => {
+            updateStoryDisplay(currentStoryText, true);
+            showToast('Story generated successfully', 'success');
+        }, 100);
+
     } catch (error) {
         console.error('Failed to generate story:', error);
         showFormError(error.message || 'Failed to generate story. Please try again.');
-        
-        // Clear previous story if error occurs
-        elements.storyText.textContent = '';
-        elements.storyOutput.classList.add('hidden');
+        updateStoryDisplay('', false);
     } finally {
+        isGeneratingStory = false;
         setButtonLoading(elements.generateStoryBtn, false);
         hideLoading();
     }
@@ -468,6 +498,11 @@ function showLoading() {
 function hideLoading() {
     elements.loadingOverlay.classList.add('hidden');
 }
+
+// Add cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    clearTimeout(storyDisplayTimeout);
+});
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', init); 
