@@ -1110,4 +1110,438 @@ audio::-webkit-media-controls-volume-slider {
     background: var(--border-color);
     border-radius: 2px;
     height: 4px;
+}
+
+/* Enhanced Voice Selection Styles */
+select optgroup {
+    font-weight: 600;
+    color: var(--text-color);
+    padding: 0.5rem 0;
+    background: var(--background-color);
+}
+
+select optgroup option {
+    font-weight: normal;
+    padding: 0.75rem;
+    color: var(--text-color);
+    background: white;
+}
+
+select option {
+    padding: 0.75rem;
+    font-size: 0.95rem;
+}
+
+select option:hover {
+    background-color: rgba(var(--primary-rgb), 0.1);
+}
+
+/* Voice quality indicators */
+select optgroup[label*="Premium"] {
+    color: var(--primary-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+select optgroup[label*="Studio"] {
+    color: #8b5cf6;
+    border-bottom: 1px solid var(--border-color);
+}
+
+select optgroup[label*="WaveNet"] {
+    color: #06b6d4;
+    border-bottom: 1px solid var(--border-color);
+}
+
+select optgroup[label*="Standard"] {
+    color: var(--text-light);
+}
+
+/* Enhance form controls for voice settings */
+.voice-settings .form-control {
+    padding-right: 2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23475569' width='24' height='24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1.5rem;
+}
+
+.voice-settings .form-control:focus {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563eb' width='24' height='24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+}
+
+/* Voice preview button enhancement */
+.btn-preview {
+    background: linear-gradient(45deg, var(--primary-color), #4f46e5);
+    color: white;
+    border: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-preview:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
+}
+
+.btn-preview::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s;
+}
+
+.btn-preview:hover::before {
+    transform: translateX(100%);
+}
+
+/* Loading state enhancement */
+.form-control:disabled {
+    background-color: var(--background-color);
+    cursor: not-allowed;
+}
+
+.form-control option:disabled {
+    color: var(--text-light);
+    font-style: italic;
+}
+
+/* Enhanced Game Listing Styles */
+.games-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.games-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: var(--card-shadow);
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filter-group label {
+    font-size: 0.9rem;
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+.chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.chip {
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    border: 1px solid var(--border-color);
+    background: none;
+    color: var(--text-color);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chip:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: rgba(var(--primary-rgb), 0.05);
+}
+
+.chip.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.games-dates {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: var(--card-shadow);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.games-dates::-webkit-scrollbar {
+    display: none;
+}
+
+.date-nav {
+    padding: 0.5rem;
+    border: none;
+    background: none;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.date-nav:hover {
+    color: var(--primary-color);
+}
+
+.date-chips {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0 1rem;
+}
+
+.date-chip {
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    background: var(--background-color);
+    color: var(--text-color);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.date-chip:hover {
+    background: rgba(var(--primary-rgb), 0.1);
+}
+
+.date-chip.active {
+    background: white;
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    padding: 0.5rem;
+}
+
+.game-card {
+    position: relative;
+    background: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.game-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -8px rgba(var(--primary-rgb), 0.2);
+}
+
+.game-card.selected {
+    border-color: var(--primary-color);
+    background: linear-gradient(to bottom right, white, rgba(var(--primary-rgb), 0.05));
+}
+
+.game-status {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.game-status.upcoming {
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--primary-color);
+}
+
+.game-status.live {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+.game-status.final {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.game-teams {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.team-info {
+    flex: 1;
+    text-align: center;
+}
+
+.team-name {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.team-record {
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+
+.game-score {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.vs-divider {
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+
+.game-details {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.game-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-light);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.games-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+.pagination-btn {
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    background: white;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pagination-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.page-numbers {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.page-number {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.page-number:hover {
+    background: rgba(var(--primary-rgb), 0.1);
+}
+
+.page-number.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+.search-wrapper {
+    position: relative;
+    flex: 1;
+    max-width: 300px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.search-wrapper i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light);
+    pointer-events: none;
+}
+
+.search-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+}
+
+@media (max-width: 768px) {
+    .games-filters {
+        flex-direction: column;
+    }
+
+    .search-wrapper {
+        max-width: 100%;
+    }
+
+    .games-dates {
+        padding: 0.5rem;
+    }
+
+    .date-chips {
+        padding: 0 0.5rem;
+    }
+
+    .game-card {
+        padding: 1rem;
+    }
+}
+
+/* Loading skeleton animation */
+@keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+}
+
+.game-card.skeleton {
+    pointer-events: none;
+    background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite linear;
+}
+
+.skeleton-text {
+    height: 1rem;
+    background: #e0e0e0;
+    border-radius: 0.25rem;
+    margin: 0.5rem 0;
 } 

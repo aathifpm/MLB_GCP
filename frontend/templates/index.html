@@ -46,9 +46,56 @@
                                 <option value="S">Spring Training</option>
                             </select>
                         </div>
+                        <div class="search-wrapper">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="gameSearch" class="search-input" placeholder="Search teams..." aria-label="Search games">
+                        </div>
                     </div>
                 </div>
-                <div id="gamesList" class="games-grid" role="list" aria-label="Available Games"></div>
+
+                <div class="games-container">
+                    <div class="games-filters">
+                        <div class="filter-group">
+                            <label>Game Status</label>
+                            <div class="chip-group">
+                                <button class="chip active" data-filter="all">All</button>
+                                <button class="chip" data-filter="upcoming">Upcoming</button>
+                                <button class="chip" data-filter="live">Live</button>
+                                <button class="chip" data-filter="final">Final</button>
+                            </div>
+                        </div>
+                        <div class="filter-group">
+                            <label>Sort By</label>
+                            <div class="chip-group">
+                                <button class="chip active" data-sort="date-asc">Date ↑</button>
+                                <button class="chip" data-sort="date-desc">Date ↓</button>
+                                <button class="chip" data-sort="team">Team</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="games-dates">
+                        <button class="date-nav prev" aria-label="Previous date">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <div class="date-chips" id="dateChips"></div>
+                        <button class="date-nav next" aria-label="Next date">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <div id="gamesList" class="games-grid" role="list" aria-label="Available Games"></div>
+
+                    <div class="games-pagination">
+                        <button class="pagination-btn" id="prevPage" aria-label="Previous page">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <div class="page-numbers" id="pageNumbers"></div>
+                        <button class="pagination-btn" id="nextPage" aria-label="Next page">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
             </section>
 
             <section class="story-preferences hidden" id="storyPreferences" aria-labelledby="preferencesTitle">
@@ -202,14 +249,14 @@
                                             <span>1x</span>
                                             <span>2x</span>
                                         </div>
-                                    </div>
                                 </div>
-                                <div class="setting-group">
+                            </div>
+                            <div class="setting-group">
                                     <label for="pitchRange">
                                         <i class="fas fa-wave-square"></i> Pitch
                                         <span class="setting-value" id="pitchValue">0</span>
                                     </label>
-                                    <div class="range-container">
+                                <div class="range-container">
                                         <input type="range" id="pitchRange" 
                                                min="-10" max="10" step="1" value="0" 
                                                aria-label="Adjust voice pitch">
@@ -232,14 +279,14 @@
                                 <i class="fas fa-play-circle"></i>
                                 <span class="btn-text">Generate Audio</span>
                                 <div class="btn-loader hidden"></div>
-                            </button>
+                        </button>
                         </div>
                     </div>
                     
                     <div id="audioPlayer" class="audio-player card hidden">
                         <h3><i class="fas fa-headphones"></i> Listen to Your Story</h3>
                         <div class="audio-visualizer">
-                            <audio controls id="storyAudio"></audio>
+                        <audio controls id="storyAudio"></audio>
                         </div>
                         <div class="audio-actions">
                             <a id="downloadLink" class="btn btn-secondary" download="story_narration.mp3">

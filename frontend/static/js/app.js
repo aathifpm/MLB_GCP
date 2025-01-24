@@ -40,6 +40,15 @@ const elements = {
     tabContents: document.querySelectorAll('.tab-content'),
     speedValue: document.getElementById('speedValue'),
     pitchValue: document.getElementById('pitchValue'),
+    gameSearch: document.getElementById('gameSearch'),
+    dateChips: document.getElementById('dateChips'),
+    dateNavPrev: document.querySelector('.date-nav.prev'),
+    dateNavNext: document.querySelector('.date-nav.next'),
+    statusChips: document.querySelectorAll('.chip[data-filter]'),
+    sortChips: document.querySelectorAll('.chip[data-sort]'),
+    pageNumbers: document.getElementById('pageNumbers'),
+    prevPage: document.getElementById('prevPage'),
+    nextPage: document.getElementById('nextPage')
 };
 
 // State
@@ -48,6 +57,18 @@ let currentStoryText = '';
 let lastScrollTop = 0;
 let isGeneratingStory = false;
 let storyDisplayTimeout = null;
+
+// Add game listing state
+const gameState = {
+    allGames: [],
+    filteredGames: [],
+    currentPage: 1,
+    gamesPerPage: 9,
+    currentFilter: 'all',
+    currentSort: 'date-asc',
+    searchQuery: '',
+    selectedDate: null
+};
 
 // Initialize the application
 async function init() {
@@ -177,36 +198,197 @@ async function loadGames() {
 
 // Render games with enhanced UI
 function renderGames(dates) {
+    // Store all games
+    gameState.allGames = dates.reduce((acc, date) => {
+        return acc.concat(date.games.map(game => ({
+            ...game,
+            dateObj: new Date(game.gameDate)
+        })));
+    }, []);
+
+    // Render date chips
+    renderDateChips(dates);
+    
+    // Apply initial filters and render
+    filterAndRenderGames();
+}
+
+function renderDateChips(dates) {
+    elements.dateChips.innerHTML = '';
+    
+    dates.forEach(date => {
+        const dateObj = new Date(date.date);
+        const chip = document.createElement('button');
+        chip.className = 'date-chip';
+        chip.dataset.date = date.date;
+        chip.textContent = dateObj.toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+        
+        if (date.date === gameState.selectedDate) {
+            chip.classList.add('active');
+        }
+        
+        chip.addEventListener('click', () => {
+            document.querySelectorAll('.date-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            gameState.selectedDate = date.date;
+            filterAndRenderGames();
+        });
+        
+        elements.dateChips.appendChild(chip);
+    });
+}
+
+function filterAndRenderGames() {
+    // Apply filters
+    let filtered = gameState.allGames;
+    
+    // Date filter
+    if (gameState.selectedDate) {
+        filtered = filtered.filter(game => {
+            const gameDate = new Date(game.gameDate).toLocaleDateString();
+            const selectedDate = new Date(gameState.selectedDate).toLocaleDateString();
+            return gameDate === selectedDate;
+        });
+    }
+    
+    // Status filter
+    if (gameState.currentFilter !== 'all') {
+        filtered = filtered.filter(game => {
+            const status = game.status.detailedState.toLowerCase();
+            switch (gameState.currentFilter) {
+                case 'upcoming':
+                    return status.includes('scheduled') || status.includes('pre-game');
+                case 'live':
+                    return status.includes('in progress') || status.includes('delayed');
+                case 'final':
+                    return status.includes('final');
+                default:
+                    return true;
+            }
+        });
+    }
+    
+    // Search filter
+    if (gameState.searchQuery) {
+        const query = gameState.searchQuery.toLowerCase();
+        filtered = filtered.filter(game => 
+            game.teams.home.team.name.toLowerCase().includes(query) ||
+            game.teams.away.team.name.toLowerCase().includes(query)
+        );
+    }
+    
+    // Sort
+    filtered.sort((a, b) => {
+        switch (gameState.currentSort) {
+            case 'date-asc':
+                return a.dateObj - b.dateObj;
+            case 'date-desc':
+                return b.dateObj - a.dateObj;
+            case 'team':
+                return a.teams.home.team.name.localeCompare(b.teams.home.team.name);
+            default:
+                return 0;
+        }
+    });
+    
+    gameState.filteredGames = filtered;
+    renderGameCards();
+    renderPagination();
+}
+
+function renderGameCards() {
     elements.gamesList.innerHTML = '';
     
-    if (dates.length === 0) {
-        elements.gamesList.innerHTML = '<p class="no-games">No games available for the selected criteria</p>';
+    const startIndex = (gameState.currentPage - 1) * gameState.gamesPerPage;
+    const endIndex = startIndex + gameState.gamesPerPage;
+    const gamesToShow = gameState.filteredGames.slice(startIndex, endIndex);
+    
+    if (gamesToShow.length === 0) {
+        elements.gamesList.innerHTML = `
+            <div class="no-games">
+                <i class="fas fa-search"></i>
+                <p>No games found matching your criteria</p>
+            </div>
+        `;
         return;
     }
     
-    dates.forEach(date => {
-        date.games.forEach(game => {
-            const card = document.createElement('div');
-            card.className = 'game-card';
-            card.dataset.gameId = game.gamePk;
-            
-            const homeTeam = game.teams.home.team.name;
-            const awayTeam = game.teams.away.team.name;
-            const gameDate = new Date(game.gameDate).toLocaleDateString();
-            const gameTime = new Date(game.gameDate).toLocaleTimeString();
-            const status = game.status.detailedState;
-            
-            card.innerHTML = `
-                <h3>${awayTeam} @ ${homeTeam}</h3>
-                <p><i class="far fa-calendar"></i> ${gameDate}</p>
-                <p><i class="far fa-clock"></i> ${gameTime}</p>
-                <p class="game-status"><i class="fas fa-info-circle"></i> ${status}</p>
-            `;
-            
-            card.addEventListener('click', () => selectGame(game.gamePk, card));
-            elements.gamesList.appendChild(card);
-        });
+    gamesToShow.forEach(game => {
+        const card = document.createElement('div');
+        card.className = 'game-card';
+        card.dataset.gameId = game.gamePk;
+        
+        const status = game.status.detailedState.toLowerCase();
+        let statusClass = 'upcoming';
+        if (status.includes('in progress') || status.includes('delayed')) {
+            statusClass = 'live';
+        } else if (status.includes('final')) {
+            statusClass = 'final';
+        }
+        
+        const homeTeam = game.teams.home.team;
+        const awayTeam = game.teams.away.team;
+        const gameTime = new Date(game.gameDate);
+        
+        card.innerHTML = `
+            <div class="game-status ${statusClass}">${game.status.detailedState}</div>
+            <div class="game-teams">
+                <div class="team-info">
+                    <div class="team-name">${awayTeam.name}</div>
+                    <div class="team-record">${game.teams.away.leagueRecord?.wins || 0}-${game.teams.away.leagueRecord?.losses || 0}</div>
+                </div>
+                <div class="vs-divider">VS</div>
+                <div class="team-info">
+                    <div class="team-name">${homeTeam.name}</div>
+                    <div class="team-record">${game.teams.home.leagueRecord?.wins || 0}-${game.teams.home.leagueRecord?.losses || 0}</div>
+                </div>
+            </div>
+            <div class="game-details">
+                <div class="game-info">
+                    <i class="far fa-calendar"></i>
+                    ${gameTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                </div>
+                <div class="game-info">
+                    <i class="far fa-clock"></i>
+                    ${gameTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                </div>
+                <div class="game-info">
+                    <i class="fas fa-map-marker-alt"></i>
+                    ${game.venue?.name || 'TBD'}
+                </div>
+            </div>
+        `;
+        
+        card.addEventListener('click', () => selectGame(game.gamePk, card));
+        elements.gamesList.appendChild(card);
     });
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(gameState.filteredGames.length / gameState.gamesPerPage);
+    elements.pageNumbers.innerHTML = '';
+    
+    // Previous button
+    elements.prevPage.disabled = gameState.currentPage === 1;
+    
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.className = `page-number ${i === gameState.currentPage ? 'active' : ''}`;
+        pageBtn.textContent = i;
+        pageBtn.addEventListener('click', () => {
+            gameState.currentPage = i;
+            filterAndRenderGames();
+        });
+        elements.pageNumbers.appendChild(pageBtn);
+    }
+    
+    // Next button
+    elements.nextPage.disabled = gameState.currentPage === totalPages;
 }
 
 // Select game with enhanced feedback
@@ -511,8 +693,8 @@ async function previewVoice() {
         return;
     }
 
-    const previewText = "Hello! This is how I will narrate your story.";
     const languageCode = elements.languageSelect.value;
+    const previewText = getPreviewText(languageCode);
     const speed = elements.speedRange.value;
     const pitch = elements.pitchRange.value;
 
@@ -541,7 +723,7 @@ async function previewVoice() {
         const audioUrl = URL.createObjectURL(audioBlob);
         
         const previewAudio = new Audio(audioUrl);
-        previewAudio.play();
+        await previewAudio.play();
         
         showToast('Playing voice preview', 'success');
     } catch (error) {
@@ -621,6 +803,69 @@ function setupEventListeners() {
     // Setup tabs and range inputs
     setupTabs();
     setupRangeInputs();
+
+    // Game search
+    elements.gameSearch.addEventListener('input', debounce(() => {
+        gameState.searchQuery = elements.gameSearch.value;
+        gameState.currentPage = 1;
+        filterAndRenderGames();
+    }, 300));
+    
+    // Status filter chips
+    elements.statusChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            elements.statusChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            gameState.currentFilter = chip.dataset.filter;
+            gameState.currentPage = 1;
+            filterAndRenderGames();
+        });
+    });
+    
+    // Sort chips
+    elements.sortChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            elements.sortChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            gameState.currentSort = chip.dataset.sort;
+            filterAndRenderGames();
+        });
+    });
+    
+    // Date navigation
+    elements.dateNavPrev.addEventListener('click', () => {
+        const chips = Array.from(elements.dateChips.children);
+        const activeIndex = chips.findIndex(chip => chip.classList.contains('active'));
+        if (activeIndex > 0) {
+            chips[activeIndex - 1].click();
+            chips[activeIndex - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    });
+    
+    elements.dateNavNext.addEventListener('click', () => {
+        const chips = Array.from(elements.dateChips.children);
+        const activeIndex = chips.findIndex(chip => chip.classList.contains('active'));
+        if (activeIndex < chips.length - 1) {
+            chips[activeIndex + 1].click();
+            chips[activeIndex + 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    });
+    
+    // Pagination
+    elements.prevPage.addEventListener('click', () => {
+        if (gameState.currentPage > 1) {
+            gameState.currentPage--;
+            filterAndRenderGames();
+        }
+    });
+    
+    elements.nextPage.addEventListener('click', () => {
+        const totalPages = Math.ceil(gameState.filteredGames.length / gameState.gamesPerPage);
+        if (gameState.currentPage < totalPages) {
+            gameState.currentPage++;
+            filterAndRenderGames();
+        }
+    });
 }
 
 // Loading overlay
@@ -664,21 +909,128 @@ async function updateVoiceOptions(languageCode) {
         voiceSelect.innerHTML = '<option value="">No voices available</option>';
         return;
     }
-    
-    voices.forEach(voice => {
-        const option = document.createElement('option');
-        option.value = voice.name;
-        // Format the display name to be more user-friendly
-        const gender = voice.gender.toLowerCase();
-        const voiceType = voice.name.includes('Neural') ? 'Neural' : 'Standard';
-        option.textContent = `${gender} (${voiceType})`;
-        voiceSelect.appendChild(option);
+
+    // Sort voices by type (Neural2 > Studio > WaveNet > Standard)
+    const sortedVoices = voices.sort((a, b) => {
+        const getVoiceTypeScore = (name) => {
+            if (name.includes('Neural2')) return 4;
+            if (name.includes('Studio')) return 3;
+            if (name.includes('Wavenet')) return 2;
+            return 1; // Standard
+        };
+        return getVoiceTypeScore(b.name) - getVoiceTypeScore(a.name);
     });
-    
-    // Select the first voice by default
-    if (voiceSelect.options.length > 0) {
+
+    // Group voices by type
+    const voiceGroups = {
+        neural2: [],
+        studio: [],
+        wavenet: [],
+        standard: []
+    };
+
+    sortedVoices.forEach(voice => {
+        const name = voice.name;
+        if (name.includes('Neural2')) {
+            voiceGroups.neural2.push(voice);
+        } else if (name.includes('Studio')) {
+            voiceGroups.studio.push(voice);
+        } else if (name.includes('Wavenet')) {
+            voiceGroups.wavenet.push(voice);
+        } else {
+            voiceGroups.standard.push(voice);
+        }
+    });
+
+    // Function to format voice display name
+    const formatVoiceName = (voice, type) => {
+        const gender = voice.gender.toLowerCase();
+        const genderLabel = gender === 'female' ? '👩 Female' : '👨 Male';
+        const languageCode = voice.language_codes[0];
+        let accent = '';
+        
+        // Add accent/region information
+        if (languageCode === 'en-US') accent = 'American';
+        else if (languageCode === 'en-GB') accent = 'British';
+        else if (languageCode === 'en-AU') accent = 'Australian';
+        else if (languageCode === 'es-ES') accent = 'Spain';
+        else if (languageCode === 'es-US') accent = 'Latin American';
+        else if (languageCode === 'ja-JP') accent = 'Japanese';
+
+        let quality = '';
+        switch (type) {
+            case 'neural2':
+                quality = '🎯 Neural2 (Best Quality)';
+                break;
+            case 'studio':
+                quality = '🎨 Studio (Professional)';
+                break;
+            case 'wavenet':
+                quality = '🌊 WaveNet (Enhanced)';
+                break;
+            default:
+                quality = '📱 Standard';
+        }
+
+        return `${genderLabel} - ${accent} ${quality}`;
+    };
+
+    // Add optgroups for each voice type
+    const addVoiceGroup = (voices, type, label) => {
+        if (voices.length === 0) return;
+        
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = label;
+        
+        voices.forEach(voice => {
+            const option = document.createElement('option');
+            option.value = voice.name;
+            option.textContent = formatVoiceName(voice, type);
+            optgroup.appendChild(option);
+        });
+        
+        voiceSelect.appendChild(optgroup);
+    };
+
+    // Add voices in order of quality
+    addVoiceGroup(voiceGroups.neural2, 'neural2', '🌟 Premium Neural Voices');
+    addVoiceGroup(voiceGroups.studio, 'studio', '🎭 Studio Voices');
+    addVoiceGroup(voiceGroups.wavenet, 'wavenet', '🎵 Enhanced WaveNet Voices');
+    addVoiceGroup(voiceGroups.standard, 'standard', '📱 Standard Voices');
+
+    // Select the first Neural2 or Studio voice by default
+    if (voiceGroups.neural2.length > 0) {
+        voiceSelect.value = voiceGroups.neural2[0].name;
+    } else if (voiceGroups.studio.length > 0) {
+        voiceSelect.value = voiceGroups.studio[0].name;
+    } else if (voiceSelect.options.length > 0) {
         voiceSelect.selectedIndex = 0;
     }
+}
+
+// Update the preview text based on language
+function getPreviewText(languageCode) {
+    const previews = {
+        'en-US': "Hello! This is how I will narrate your baseball story.",
+        'en-GB': "Hello! This is how I will narrate your baseball story.",
+        'es-ES': "¡Hola! Así es como narraré tu historia de béisbol.",
+        'es-US': "¡Hola! Así es como narraré tu historia de béisbol.",
+        'ja-JP': "こんにちは！野球の物語をこのように語ります。"
+    };
+    return previews[languageCode] || previews['en-US'];
+}
+
+// Utility function for debouncing
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }
 
 // Initialize the app
