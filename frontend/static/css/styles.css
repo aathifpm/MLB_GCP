@@ -33,6 +33,9 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    max-width: 1920px;
+    margin: 0 auto;
+    width: 100%;
 }
 
 .header {
@@ -44,6 +47,7 @@ body {
     transition: transform 0.3s var(--smooth);
     padding: 1rem 2rem;
     box-shadow: var(--card-shadow);
+    width: 100%;
 }
 
 .header.header-hidden {
@@ -51,11 +55,12 @@ body {
 }
 
 .header-content {
-    max-width: 1200px;
+    max-width: 1600px;
     margin: 0 auto;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 0 1rem;
 }
 
 .logo-container {
@@ -106,7 +111,7 @@ body {
 .main-content {
     flex: 1;
     padding: 2rem;
-    max-width: 1200px;
+    max-width: 1600px;
     margin: 0 auto;
     width: 100%;
 }
@@ -123,30 +128,86 @@ section {
 }
 
 .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid var(--border-color);
 }
 
-h2 {
+.section-header h2 {
+    margin-bottom: 1rem;
     color: var(--text-color);
     font-size: 1.5rem;
     font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
 }
 
-h2 i {
-    color: var(--primary-color);
+.games-section {
+    background: white;
+    border-radius: 1rem;
+    padding: 2rem;
+    margin: 1rem auto;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    max-width: 1600px;
+    width: 100%;
+}
+
+.games-container {
+    margin-top: 1.5rem;
+}
+
+.games-filters {
+    margin-bottom: 1.5rem;
+}
+
+.filter-group {
+    margin-bottom: 1rem;
+}
+
+.filter-group:last-child {
+    margin-bottom: 0;
+}
+
+.games-dates {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding: 1rem 0;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+@media (max-width: 768px) {
+    .games-section {
+        margin: 0.5rem;
+        padding: 1rem;
+    }
+
+    .section-header {
+        margin-bottom: 1rem;
+    }
+
+    .section-header h2 {
+        font-size: 1.25rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .games-container {
+        margin-top: 1rem;
+    }
+
+    .games-filters {
+        margin-bottom: 1rem;
+    }
+
+    .games-dates {
+        margin-bottom: 1rem;
+        padding: 0.75rem 0;
+    }
 }
 
 .filters {
     display: flex;
     gap: 1rem;
+    padding: 0 0 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
 }
 
 .select-wrapper {
@@ -182,31 +243,38 @@ h2 i {
 
 .games-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem;
+    width: 100%;
+    margin: 0;
 }
 
 .game-card {
     position: relative;
-    background: linear-gradient(to bottom right, white, rgba(37, 99, 235, 0.05));
-    border: 1px solid var(--border-color);
+    background: var(--background-color);
     border-radius: 1rem;
-    padding: 1.5rem;
+    padding: 1.25rem;
+    transition: all 0.3s ease;
     cursor: pointer;
-    transition: all 0.3s var(--smooth);
-    overflow: hidden;
+    border: 2px solid transparent;
+    display: flex;
+    flex-direction: column;
+    min-height: 180px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    margin: 0;
+    transform-origin: center;
 }
 
 .game-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 24px -8px rgba(37, 99, 235, 0.2);
-    border-color: var(--primary-color);
+    box-shadow: 0 8px 16px -4px rgba(var(--primary-rgb), 0.2);
 }
 
 .game-card.selected {
-    background: linear-gradient(to bottom right, white, rgba(37, 99, 235, 0.1));
-    border: 2px solid var(--primary-color);
-    box-shadow: 0 8px 16px -4px rgba(37, 99, 235, 0.3);
+    border-color: var(--primary-color);
+    background: linear-gradient(to bottom right, white, rgba(var(--primary-rgb), 0.05));
 }
 
 .game-card h3 {
@@ -221,14 +289,225 @@ h2 i {
 }
 
 .game-status {
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--border-color);
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    z-index: 2;
+    white-space: nowrap;
+}
+
+.game-teams {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 2rem 0 1rem;
+    padding-right: 80px; /* Add space for status */
+}
+
+.team-info {
+    flex: 1;
+    text-align: center;
+    min-width: 0; /* Allow text to wrap */
+}
+
+.team-name {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.95rem;
+    line-height: 1.2;
+}
+
+.team-record {
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+
+.vs-divider {
     color: var(--text-light);
     font-size: 0.9rem;
+    flex-shrink: 0;
+    padding: 0 0.5rem;
+}
+
+.game-score {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.game-details {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.game-info {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    color: var(--text-light);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.games-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+.pagination-btn {
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    background: white;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pagination-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.page-numbers {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.page-number {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 0.5rem 1rem;
+    margin: 0 0.25rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: var(--transition);
+    min-width: 2.5rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+.page-number:hover:not(.active):not(.ellipsis) {
+    background-color: var(--background-color);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.page-number.active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    font-weight: 500;
+}
+
+.page-number.ellipsis {
+    border: none;
+    cursor: default;
+    padding: 0.5rem 0.25rem;
+}
+
+.page-number.ellipsis:hover {
+    background: none;
+    color: var(--text-color);
+}
+
+.search-wrapper {
+    position: relative;
+    flex: 1;
+    max-width: 300px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.search-wrapper i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light);
+    pointer-events: none;
+}
+
+.search-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+}
+
+@media (max-width: 768px) {
+    .games-section {
+        margin: 0.5rem;
+        padding: 1rem;
+    }
+
+    .games-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        padding: 0.5rem;
+    }
+
+    .filters {
+        flex-direction: column;
+    }
+
+    .search-wrapper {
+        max-width: 100%;
+    }
+
+    .games-dates {
+        padding: 0.75rem;
+    }
+
+    .date-chips {
+        padding: 0 0.5rem;
+    }
+
+    .game-card {
+        padding: 1rem;
+        min-height: 160px;
+    }
+}
+
+/* Loading skeleton animation */
+@keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+}
+
+.game-card.skeleton {
+    pointer-events: none;
+    background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite linear;
+}
+
+.skeleton-text {
+    height: 1rem;
+    background: #e0e0e0;
+    border-radius: 0.25rem;
+    margin: 0.5rem 0;
 }
 
 .preferences-form {
@@ -1328,24 +1607,33 @@ select optgroup[label*="Standard"] {
 
 .games-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
-    padding: 0.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem;
+    width: 100%;
+    margin: 0;
 }
 
 .game-card {
     position: relative;
-    background: white;
+    background: var(--background-color);
     border-radius: 1rem;
-    padding: 1.5rem;
+    padding: 1.25rem;
     transition: all 0.3s ease;
     cursor: pointer;
     border: 2px solid transparent;
+    display: flex;
+    flex-direction: column;
+    min-height: 180px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    margin: 0;
+    transform-origin: center;
 }
 
 .game-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 24px -8px rgba(var(--primary-rgb), 0.2);
+    box-shadow: 0 8px 16px -4px rgba(var(--primary-rgb), 0.2);
 }
 
 .game-card.selected {
@@ -1382,17 +1670,24 @@ select optgroup[label*="Standard"] {
     display: flex;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 1rem;
+    margin: 2rem 0 1rem;
+    padding-right: 80px; /* Add space for status */
 }
 
 .team-info {
     flex: 1;
     text-align: center;
+    min-width: 0; /* Allow text to wrap */
 }
 
 .team-name {
     font-weight: 600;
     margin-bottom: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.95rem;
+    line-height: 1.2;
 }
 
 .team-record {
@@ -1400,15 +1695,17 @@ select optgroup[label*="Standard"] {
     color: var(--text-light);
 }
 
+.vs-divider {
+    color: var(--text-light);
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    padding: 0 0.5rem;
+}
+
 .game-score {
     font-size: 1.5rem;
     font-weight: 700;
     color: var(--text-color);
-}
-
-.vs-divider {
-    color: var(--text-light);
-    font-size: 0.9rem;
 }
 
 .game-details {
@@ -1460,19 +1757,40 @@ select optgroup[label*="Standard"] {
 }
 
 .page-number {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
     padding: 0.5rem 1rem;
+    margin: 0 0.25rem;
     border-radius: 0.5rem;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: var(--transition);
+    min-width: 2.5rem;
+    font-family: 'Poppins', sans-serif;
 }
 
-.page-number:hover {
-    background: rgba(var(--primary-rgb), 0.1);
+.page-number:hover:not(.active):not(.ellipsis) {
+    background-color: var(--background-color);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
 }
 
 .page-number.active {
-    background: var(--primary-color);
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
     color: white;
+    font-weight: 500;
+}
+
+.page-number.ellipsis {
+    border: none;
+    cursor: default;
+    padding: 0.5rem 0.25rem;
+}
+
+.page-number.ellipsis:hover {
+    background: none;
+    color: var(--text-color);
 }
 
 .search-wrapper {
@@ -1523,6 +1841,7 @@ select optgroup[label*="Standard"] {
 
     .game-card {
         padding: 1rem;
+        min-height: 160px;
     }
 }
 
@@ -1544,4 +1863,101 @@ select optgroup[label*="Standard"] {
     background: #e0e0e0;
     border-radius: 0.25rem;
     margin: 0.5rem 0;
+}
+
+/* Large screens (1920x1080 and above) */
+@media (min-width: 1920px) {
+    .games-section {
+        padding: 2.5rem;
+        max-width: 1800px;
+    }
+    
+    .games-grid {
+        grid-template-columns: repeat(4, minmax(300px, 1fr));
+        gap: 1.75rem;
+        padding: 1.5rem;
+    }
+}
+
+/* Medium-large screens */
+@media (min-width: 1440px) and (max-width: 1919px) {
+    .games-section {
+        padding: 2rem;
+        max-width: 1400px;
+    }
+    
+    .games-grid {
+        grid-template-columns: repeat(3, minmax(300px, 1fr));
+        gap: 1.5rem;
+        padding: 1.25rem;
+    }
+}
+
+/* Medium screens */
+@media (min-width: 1024px) and (max-width: 1439px) {
+    .games-section {
+        padding: 1.75rem;
+        max-width: 1200px;
+    }
+    
+    .games-grid {
+        grid-template-columns: repeat(3, minmax(280px, 1fr));
+        gap: 1.25rem;
+        padding: 1rem;
+    }
+}
+
+/* Tablet and smaller screens */
+@media (max-width: 1023px) {
+    .games-section {
+        padding: 1.5rem;
+        margin: 0.75rem;
+    }
+    
+    .games-grid {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .header {
+        padding: 0.75rem 1rem;
+    }
+
+    .header-content {
+        padding: 0 0.5rem;
+    }
+
+    .main-content {
+        padding: 1rem;
+    }
+
+    .games-section {
+        margin: 0.5rem;
+        padding: 1rem;
+    }
+
+    .games-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        padding: 0.5rem;
+    }
+
+    .filters {
+        flex-direction: column;
+    }
+
+    .search-wrapper {
+        max-width: 100%;
+    }
+
+    .games-dates {
+        padding: 0.75rem;
+    }
+
+    .date-chips {
+        padding: 0 0.5rem;
+    }
 } 

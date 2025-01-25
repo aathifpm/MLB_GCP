@@ -371,24 +371,52 @@ function renderGameCards() {
 function renderPagination() {
     const totalPages = Math.ceil(gameState.filteredGames.length / gameState.gamesPerPage);
     elements.pageNumbers.innerHTML = '';
-    
-    // Previous button
     elements.prevPage.disabled = gameState.currentPage === 1;
-    
-    // Page numbers
-    for (let i = 1; i <= totalPages; i++) {
-        const pageBtn = document.createElement('button');
-        pageBtn.className = `page-number ${i === gameState.currentPage ? 'active' : ''}`;
-        pageBtn.textContent = i;
-        pageBtn.addEventListener('click', () => {
-            gameState.currentPage = i;
-            filterAndRenderGames();
-        });
-        elements.pageNumbers.appendChild(pageBtn);
-    }
-    
-    // Next button
     elements.nextPage.disabled = gameState.currentPage === totalPages;
+
+    // Helper function to create page button
+    const createPageButton = (pageNum, isActive = false, isEllipsis = false) => {
+        const button = document.createElement('button');
+        button.className = `page-number ${isActive ? 'active' : ''} ${isEllipsis ? 'ellipsis' : ''}`;
+        button.textContent = isEllipsis ? '...' : pageNum;
+        
+        if (!isEllipsis) {
+            button.addEventListener('click', () => {
+                gameState.currentPage = pageNum;
+                renderGameCards();
+                renderPagination();
+            });
+        }
+        
+        return button;
+    };
+
+    // Always show first page
+    elements.pageNumbers.appendChild(createPageButton(1, gameState.currentPage === 1));
+
+    // Calculate range of pages to show
+    let startPage = Math.max(2, gameState.currentPage - 3);
+    let endPage = Math.min(totalPages - 1, gameState.currentPage + 3);
+
+    // Add ellipsis after first page if needed
+    if (startPage > 2) {
+        elements.pageNumbers.appendChild(createPageButton(null, false, true));
+    }
+
+    // Add pages within range
+    for (let i = startPage; i <= endPage; i++) {
+        elements.pageNumbers.appendChild(createPageButton(i, gameState.currentPage === i));
+    }
+
+    // Add ellipsis before last page if needed
+    if (endPage < totalPages - 1) {
+        elements.pageNumbers.appendChild(createPageButton(null, false, true));
+    }
+
+    // Always show last page if there is more than one page
+    if (totalPages > 1) {
+        elements.pageNumbers.appendChild(createPageButton(totalPages, gameState.currentPage === totalPages));
+    }
 }
 
 // Select game with enhanced feedback

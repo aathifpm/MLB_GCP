@@ -30,6 +30,8 @@
             <section class="game-selection" aria-labelledby="gameSelectionTitle">
                 <div class="section-header">
                     <h2 id="gameSelectionTitle"><i class="fas fa-calendar-alt"></i> Select a Game</h2>
+                </div>
+                <div class="games-section">
                     <div class="filters">
                         <div class="select-wrapper">
                             <i class="fas fa-calendar-year"></i>
@@ -51,49 +53,49 @@
                             <input type="text" id="gameSearch" class="search-input" placeholder="Search teams..." aria-label="Search games">
                         </div>
                     </div>
-                </div>
 
-                <div class="games-container">
-                    <div class="games-filters">
-                        <div class="filter-group">
-                            <label>Game Status</label>
-                            <div class="chip-group">
-                                <button class="chip active" data-filter="all">All</button>
-                                <button class="chip" data-filter="upcoming">Upcoming</button>
-                                <button class="chip" data-filter="live">Live</button>
-                                <button class="chip" data-filter="final">Final</button>
+                    <div class="games-container">
+                        <div class="games-filters">
+                            <div class="filter-group">
+                                <label>Game Status</label>
+                                <div class="chip-group">
+                                    <button class="chip active" data-filter="all">All</button>
+                                    <button class="chip" data-filter="upcoming">Upcoming</button>
+                                    <button class="chip" data-filter="live">Live</button>
+                                    <button class="chip" data-filter="final">Final</button>
+                                </div>
+                            </div>
+                            <div class="filter-group">
+                                <label>Sort By</label>
+                                <div class="chip-group">
+                                    <button class="chip active" data-sort="date-asc">Date ↑</button>
+                                    <button class="chip" data-sort="date-desc">Date ↓</button>
+                                    <button class="chip" data-sort="team">Team</button>
+                                </div>
                             </div>
                         </div>
-                        <div class="filter-group">
-                            <label>Sort By</label>
-                            <div class="chip-group">
-                                <button class="chip active" data-sort="date-asc">Date ↑</button>
-                                <button class="chip" data-sort="date-desc">Date ↓</button>
-                                <button class="chip" data-sort="team">Team</button>
-                            </div>
+
+                        <div class="games-dates">
+                            <button class="date-nav prev" aria-label="Previous date">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <div class="date-chips" id="dateChips"></div>
+                            <button class="date-nav next" aria-label="Next date">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
                         </div>
-                    </div>
 
-                    <div class="games-dates">
-                        <button class="date-nav prev" aria-label="Previous date">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <div class="date-chips" id="dateChips"></div>
-                        <button class="date-nav next" aria-label="Next date">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                    </div>
+                        <div id="gamesList" class="games-grid" role="list" aria-label="Available Games"></div>
 
-                    <div id="gamesList" class="games-grid" role="list" aria-label="Available Games"></div>
-
-                    <div class="games-pagination">
-                        <button class="pagination-btn" id="prevPage" aria-label="Previous page">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <div class="page-numbers" id="pageNumbers"></div>
-                        <button class="pagination-btn" id="nextPage" aria-label="Next page">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
+                        <div class="games-pagination">
+                            <button class="pagination-btn" id="prevPage" aria-label="Previous page">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <div class="page-numbers" id="pageNumbers"></div>
+                            <button class="pagination-btn" id="nextPage" aria-label="Next page">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
