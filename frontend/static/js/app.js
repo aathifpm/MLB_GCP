@@ -67,7 +67,27 @@ const gameState = {
     currentFilter: 'all',
     currentSort: 'date-asc',
     searchQuery: '',
-    selectedDate: null
+    selectedDate: null,
+    selectedGame: null,
+    isModalOpen: false
+};
+
+// Update API configuration
+const API_CONFIG = {
+    BASE_URL: 'http://localhost:8000',
+    ENDPOINTS: {
+        GAME_FEED: '/api/games',
+        GAME_CONTENT: '/api/games',
+        TEAMS: '/api/teams',
+        PLAYERS: '/api/players',
+        HOME_RUNS: '/api/home-runs'
+    }
+};
+
+// Add static assets configuration
+const STATIC_ASSETS = {
+    DEFAULT_TEAM_LOGO: `${API_CONFIG.BASE_URL}/static/images/default-team.png`,
+    DEFAULT_PLAYER_PHOTO: `${API_CONFIG.BASE_URL}/static/images/default-player.png`
 };
 
 // Initialize the application
@@ -363,7 +383,11 @@ function renderGameCards() {
             </div>
         `;
         
-        card.addEventListener('click', () => selectGame(game.gamePk, card));
+        card.addEventListener('click', () => {
+            if (!gameState.isModalOpen) {
+                showGameStatsModal(game);
+            }
+        });
         elements.gamesList.appendChild(card);
     });
 }
@@ -894,6 +918,26 @@ function setupEventListeners() {
             filterAndRenderGames();
         }
     });
+
+    // Add modal close handlers
+    document.querySelector('.close-modal').addEventListener('click', hideGameStatsModal);
+    
+    document.getElementById('gameStatsModal').addEventListener('click', (e) => {
+        if (e.target.id === 'gameStatsModal') {
+            hideGameStatsModal();
+        }
+    });
+    
+    // Add continue to story button in modal
+    const continueBtn = document.createElement('button');
+    continueBtn.className = 'btn btn-primary continue-to-story';
+    continueBtn.innerHTML = '<i class="fas fa-pen"></i> Continue to Story Creation';
+    continueBtn.addEventListener('click', () => {
+        hideGameStatsModal();
+        showStoryPreferences();
+    });
+    
+    document.querySelector('.modal-body').appendChild(continueBtn);
 }
 
 // Loading overlay
@@ -1059,6 +1103,325 @@ function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
+}
+
+// Add modal handling functions
+function showStoryPreferences() {
+    // Get the story preferences section
+    const preferencesSection = document.getElementById('storyPreferences');
+    
+    // Show the section
+    preferencesSection.classList.remove('hidden');
+    
+    // Scroll to the section smoothly
+    preferencesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    // Update UI state
+    selectedGameId = gameState.selectedGame.gamePk;
+    
+    // Reset any previous story
+    updateStoryDisplay('', false);
+}
+
+async function showGameStatsModal(game) {
+    try {
+        showLoadingOverlay();
+        
+        // Store selected game in state
+        gameState.selectedGame = game;
+        
+        // Fetch game data and highlights
+        const [gameData, highlights, homeRuns] = await Promise.all([
+            fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GAME_FEED}/${game.gamePk}/feed`).then(res => res.json()),
+            fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GAME_FEED}/${game.gamePk}/highlights`).then(res => res.json()),
+            fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.HOME_RUNS}/${new Date(game.gameDate).getFullYear()}`).then(res => res.json())
+        ]);
+        
+        // Filter home runs for this game
+        const gameHomeRuns = homeRuns.filter(hr => hr.play_id.toString() === game.gamePk.toString());
+        
+        // Update modal with all data
+        updateGameStatsModal(gameData, highlights, gameHomeRuns);
+        
+        // Show modal
+        const modal = document.getElementById('gameStatsModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+        gameState.isModalOpen = true;
+        
+    } catch (error) {
+        console.error('Error showing game stats:', error);
+        showToast('Failed to load game statistics', 'error');
+    } finally {
+        hideLoadingOverlay();
+    }
+}
+
+function hideGameStatsModal() {
+    const modal = document.getElementById('gameStatsModal');
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        document.body.classList.remove('modal-open');
+        gameState.isModalOpen = false;
+    }, 300);
+}
+
+function updateGameStatsModal(gameData, highlights, homeRuns = []) {
+    const modal = document.getElementById('gameStatsModal');
+    if (!modal) return;
+    
+    // Get teams data
+    const teams = gameData.gameData?.teams || {};
+    const homeTeam = teams.home || {};
+    const awayTeam = teams.away || {};
+    
+    // Get linescore for current game state
+    const linescore = gameData.liveData?.linescore || {};
+    const homeScore = linescore.teams?.home?.runs || 0;
+    const awayScore = linescore.teams?.away?.runs || 0;
+    
+    // Get boxscore for detailed stats
+    const boxscore = gameData.liveData?.boxscore?.teams || {};
+    const homeStats = boxscore.home?.teamStats?.batting || {};
+    const awayStats = boxscore.away?.teamStats?.batting || {};
+    
+    // Get game info
+    const status = gameData.gameData?.status?.detailedState || 'Scheduled';
+    const venue = gameData.gameData?.venue?.name || 'TBD';
+    const gameDate = gameData.gameData?.datetime?.dateTime || new Date().toISOString();
+    
+    modal.querySelector('.game-summary').innerHTML = `
+        <div class="team-matchup">
+            <div class="team home">
+                <img src="https://www.mlbstatic.com/team-logos/${homeTeam.id}.svg" 
+                     alt="${homeTeam.name} logo" 
+                     class="team-logo"
+                     onerror="this.src='${STATIC_ASSETS.DEFAULT_TEAM_LOGO}'">
+                <h3>${homeTeam.name || 'Home Team'}</h3>
+                <p class="score">${homeScore}</p>
+            </div>
+            <div class="vs">VS</div>
+            <div class="team away">
+                <img src="https://www.mlbstatic.com/team-logos/${awayTeam.id}.svg" 
+                     alt="${awayTeam.name} logo" 
+                     class="team-logo"
+                     onerror="this.src='${STATIC_ASSETS.DEFAULT_TEAM_LOGO}'">
+                <h3>${awayTeam.name || 'Away Team'}</h3>
+                <p class="score">${awayScore}</p>
+            </div>
+        </div>
+        <div class="game-info">
+            <p><i class="fas fa-calendar"></i> ${new Date(gameDate).toLocaleDateString()}</p>
+            <p><i class="fas fa-map-marker-alt"></i> ${venue}</p>
+            <p><i class="fas fa-clock"></i> ${status}</p>
+        </div>
+    `;
+    
+    // Update highlights section
+    const highlightsContainer = modal.querySelector('.highlights-section');
+    if (highlights && highlights.length > 0) {
+        highlightsContainer.innerHTML = `
+            <h3><i class="fas fa-play-circle"></i> Game Highlights</h3>
+            <div class="highlights-grid">
+                ${highlights.map(highlight => {
+                    // Get the best quality video URL
+                    const videoUrl = highlight.playbacks?.find(p => p.name === 'mp4Avc')?.url || '';
+                    return `
+                        <div class="highlight-card">
+                            <div class="highlight-video" data-video-url="${videoUrl}">
+                                <img src="${highlight.thumbnail || ''}" alt="${highlight.title}">
+                                <div class="play-button">
+                                    <i class="fas fa-play"></i>
+                                </div>
+                                ${highlight.duration ? `<span class="duration">${highlight.duration}</span>` : ''}
+                            </div>
+                            <div class="highlight-info">
+                                <h4>${highlight.title}</h4>
+                                <p>${highlight.description || ''}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+
+        // Add click handlers for video playback
+        highlightsContainer.querySelectorAll('.highlight-video').forEach(video => {
+            video.addEventListener('click', () => {
+                const videoUrl = video.dataset.videoUrl;
+                if (videoUrl) {
+                    showVideoPlayer(videoUrl);
+                }
+            });
+        });
+    } else {
+        highlightsContainer.innerHTML = '<p>No highlights available</p>';
+    }
+    
+    // Update home runs section
+    const homeRunsContainer = modal.querySelector('.home-runs-section');
+    if (homeRuns && homeRuns.length > 0) {
+        homeRunsContainer.innerHTML = `
+            <h3><i class="fas fa-baseball-ball"></i> Home Runs</h3>
+            <div class="home-runs-grid">
+                ${homeRuns.map(hr => `
+                    <div class="home-run-card">
+                        <div class="hr-details">
+                            <h4>${hr.title || 'Home Run'}</h4>
+                            <div class="hr-stats">
+                                ${hr.ExitVelocity ? `<span><i class="fas fa-bolt"></i> Exit Velocity: ${hr.ExitVelocity} mph</span>` : ''}
+                                ${hr.LaunchAngle ? `<span><i class="fas fa-angle-up"></i> Launch Angle: ${hr.LaunchAngle}°</span>` : ''}
+                                ${hr.HitDistance ? `<span><i class="fas fa-ruler-horizontal"></i> Distance: ${hr.HitDistance} ft</span>` : ''}
+                            </div>
+                        </div>
+                        ${hr.video ? `
+                            <div class="hr-video">
+                                <button class="btn btn-primary" onclick="showVideoPlayer('${hr.video}')">
+                                    <i class="fas fa-play"></i> Watch Video
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } else {
+        homeRunsContainer.innerHTML = '<p>No home runs in this game</p>';
+    }
+    
+    // Get batting stats
+    const homeBatting = boxscore.home?.teamStats?.batting || {};
+    const awayBatting = boxscore.away?.teamStats?.batting || {};
+    
+    // Update game stats section with detailed batting stats
+    const statsContainer = modal.querySelector('.game-stats-section');
+    statsContainer.innerHTML = `
+        <h3><i class="fas fa-chart-bar"></i> Team Statistics</h3>
+        <div class="stats-grid">
+            <div class="stat-column">
+                <h4>${homeTeam.name || 'Home Team'}</h4>
+                <div class="stat-row">
+                    <span>Hits</span>
+                    <span>${homeBatting.hits || 0}</span>
+                </div>
+                <div class="stat-row">
+                    <span>Runs</span>
+                    <span>${homeScore}</span>
+                </div>
+                <div class="stat-row">
+                    <span>Home Runs</span>
+                    <span>${homeBatting.homeRuns || 0}</span>
+                </div>
+                <div class="stat-row">
+                    <span>Batting Avg</span>
+                    <span>${homeBatting.avg || '.000'}</span>
+                </div>
+                <div class="stat-row">
+                    <span>RBI</span>
+                    <span>${homeBatting.rbi || 0}</span>
+                </div>
+                <div class="stat-row">
+                    <span>Strikeouts</span>
+                    <span>${homeBatting.strikeOuts || 0}</span>
+                </div>
+            </div>
+            <div class="stat-column">
+                <h4>${awayTeam.name || 'Away Team'}</h4>
+                <div class="stat-row">
+                    <span>Hits</span>
+                    <span>${awayBatting.hits || 0}</span>
+                </div>
+                <div class="stat-row">
+                    <span>Runs</span>
+                    <span>${awayScore}</span>
+                </div>
+                <div class="stat-row">
+                    <span>Home Runs</span>
+                    <span>${awayBatting.homeRuns || 0}</span>
+                </div>
+                <div class="stat-row">
+                    <span>Batting Avg</span>
+                    <span>${awayBatting.avg || '.000'}</span>
+                </div>
+                <div class="stat-row">
+                    <span>RBI</span>
+                    <span>${awayBatting.rbi || 0}</span>
+                </div>
+                <div class="stat-row">
+                    <span>Strikeouts</span>
+                    <span>${awayBatting.strikeOuts || 0}</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getOrdinalSuffix(num) {
+    const j = num % 10;
+    const k = num % 100;
+    if (j == 1 && k != 11) return "st";
+    if (j == 2 && k != 12) return "nd";
+    if (j == 3 && k != 13) return "rd";
+    return "th";
+}
+
+// Add these loading overlay functions
+function showLoadingOverlay() {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.classList.remove('hidden');
+}
+
+function hideLoadingOverlay() {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.classList.add('hidden');
+}
+
+// Add video player modal to the DOM
+document.body.insertAdjacentHTML('beforeend', `
+    <div class="video-player-modal" id="videoPlayerModal">
+        <div class="video-container">
+            <video id="highlightVideo" controls></video>
+            <button class="close-video" onclick="hideVideoPlayer()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+`);
+
+function showVideoPlayer(videoUrl) {
+    const modal = document.getElementById('videoPlayerModal');
+    const video = document.getElementById('highlightVideo');
+    
+    // Set video source and load it
+    video.src = videoUrl;
+    video.load();
+    
+    // Show modal
+    modal.classList.add('show');
+    
+    // Play video
+    video.play().catch(e => console.log('Auto-play prevented:', e));
+    
+    // Add event listener to pause video when modal is closed
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            hideVideoPlayer();
+        }
+    });
+}
+
+function hideVideoPlayer() {
+    const modal = document.getElementById('videoPlayerModal');
+    const video = document.getElementById('highlightVideo');
+    
+    // Pause and reset video
+    video.pause();
+    video.currentTime = 0;
+    
+    // Hide modal
+    modal.classList.remove('show');
 }
 
 // Initialize the app
