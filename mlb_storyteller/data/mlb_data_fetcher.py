@@ -693,4 +693,50 @@ class MLBDataFetcher:
                 if splits:
                     processed_stats[group_name] = splits[0].get("stat", {})
         
-        return processed_stats 
+        return processed_stats
+
+    def get_home_runs_data(self) -> pd.DataFrame:
+        """
+        Fetch and process MLB home runs data from the provided CSV files.
+        
+        Returns:
+            DataFrame containing processed home runs data from all seasons
+        """
+        mlb_hr_csvs_list = [
+            'https://storage.googleapis.com/gcp-mlb-hackathon-2025/datasets/2016-mlb-homeruns.csv',
+            'https://storage.googleapis.com/gcp-mlb-hackathon-2025/datasets/2017-mlb-homeruns.csv',
+            'https://storage.googleapis.com/gcp-mlb-hackathon-2025/datasets/2024-mlb-homeruns.csv',
+            'https://storage.googleapis.com/gcp-mlb-hackathon-2025/datasets/2024-postseason-mlb-homeruns.csv'
+        ]
+        
+        # Create a list to store DataFrames for each season
+        dfs = []
+        
+        for csv_url in mlb_hr_csvs_list:
+            try:
+                # Extract season from the URL
+                season = csv_url.split('/')[-1].split('-')[0]
+                
+                # Read CSV file
+                df = pd.read_csv(csv_url)
+                
+                # Add season column
+                df['season'] = season
+                
+                dfs.append(df)
+                
+            except Exception as e:
+                print(f"Error processing {csv_url}: {str(e)}")
+                continue
+        
+        if not dfs:
+            raise Exception("Failed to load any home runs data")
+            
+        # Combine all DataFrames
+        all_mlb_hrs = pd.concat(dfs, ignore_index=True)
+        
+        # Select and reorder columns
+        columns = ['season', 'play_id', 'title', 'ExitVelocity', 'LaunchAngle', 'HitDistance', 'video']
+        all_mlb_hrs = all_mlb_hrs[columns]
+        
+        return all_mlb_hrs 

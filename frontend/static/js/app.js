@@ -1192,6 +1192,7 @@ function updateGameStatsModal(gameData, highlights, homeRuns = []) {
     const venue = gameData.gameData?.venue?.name || 'TBD';
     const gameDate = gameData.gameData?.datetime?.dateTime || new Date().toISOString();
     
+    // Update game summary
     modal.querySelector('.game-summary').innerHTML = `
         <div class="team-matchup">
             <div class="team home">
@@ -1219,82 +1220,6 @@ function updateGameStatsModal(gameData, highlights, homeRuns = []) {
         </div>
     `;
     
-    // Update highlights section
-    const highlightsContainer = modal.querySelector('.highlights-section');
-    if (highlights && highlights.length > 0) {
-        highlightsContainer.innerHTML = `
-            <h3><i class="fas fa-play-circle"></i> Game Highlights</h3>
-            <div class="highlights-grid">
-                ${highlights.map(highlight => {
-                    // Get the best quality video URL
-                    const videoUrl = highlight.playbacks?.find(p => p.name === 'mp4Avc')?.url || '';
-                    return `
-                        <div class="highlight-card">
-                            <div class="highlight-video" data-video-url="${videoUrl}">
-                                <img src="${highlight.thumbnail || ''}" alt="${highlight.title}">
-                                <div class="play-button">
-                                    <i class="fas fa-play"></i>
-                                </div>
-                                ${highlight.duration ? `<span class="duration">${highlight.duration}</span>` : ''}
-                            </div>
-                            <div class="highlight-info">
-                                <h4>${highlight.title}</h4>
-                                <p>${highlight.description || ''}</p>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-
-        // Add click handlers for video playback
-        highlightsContainer.querySelectorAll('.highlight-video').forEach(video => {
-            video.addEventListener('click', () => {
-                const videoUrl = video.dataset.videoUrl;
-                if (videoUrl) {
-                    showVideoPlayer(videoUrl);
-                }
-            });
-        });
-    } else {
-        highlightsContainer.innerHTML = '<p>No highlights available</p>';
-    }
-    
-    // Update home runs section
-    const homeRunsContainer = modal.querySelector('.home-runs-section');
-    if (homeRuns && homeRuns.length > 0) {
-        homeRunsContainer.innerHTML = `
-            <h3><i class="fas fa-baseball-ball"></i> Home Runs</h3>
-            <div class="home-runs-grid">
-                ${homeRuns.map(hr => `
-                    <div class="home-run-card">
-                        <div class="hr-details">
-                            <h4>${hr.title || 'Home Run'}</h4>
-                            <div class="hr-stats">
-                                ${hr.ExitVelocity ? `<span><i class="fas fa-bolt"></i> Exit Velocity: ${hr.ExitVelocity} mph</span>` : ''}
-                                ${hr.LaunchAngle ? `<span><i class="fas fa-angle-up"></i> Launch Angle: ${hr.LaunchAngle}°</span>` : ''}
-                                ${hr.HitDistance ? `<span><i class="fas fa-ruler-horizontal"></i> Distance: ${hr.HitDistance} ft</span>` : ''}
-                            </div>
-                        </div>
-                        ${hr.video ? `
-                            <div class="hr-video">
-                                <button class="btn btn-primary" onclick="showVideoPlayer('${hr.video}')">
-                                    <i class="fas fa-play"></i> Watch Video
-                                </button>
-                            </div>
-                        ` : ''}
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    } else {
-        homeRunsContainer.innerHTML = '<p>No home runs in this game</p>';
-    }
-    
-    // Get batting stats
-    const homeBatting = boxscore.home?.teamStats?.batting || {};
-    const awayBatting = boxscore.away?.teamStats?.batting || {};
-    
     // Update game stats section with detailed batting stats
     const statsContainer = modal.querySelector('.game-stats-section');
     statsContainer.innerHTML = `
@@ -1304,7 +1229,7 @@ function updateGameStatsModal(gameData, highlights, homeRuns = []) {
                 <h4>${homeTeam.name || 'Home Team'}</h4>
                 <div class="stat-row">
                     <span>Hits</span>
-                    <span>${homeBatting.hits || 0}</span>
+                    <span>${homeStats.hits || 0}</span>
                 </div>
                 <div class="stat-row">
                     <span>Runs</span>
@@ -1312,26 +1237,26 @@ function updateGameStatsModal(gameData, highlights, homeRuns = []) {
                 </div>
                 <div class="stat-row">
                     <span>Home Runs</span>
-                    <span>${homeBatting.homeRuns || 0}</span>
+                    <span>${homeStats.homeRuns || 0}</span>
                 </div>
                 <div class="stat-row">
                     <span>Batting Avg</span>
-                    <span>${homeBatting.avg || '.000'}</span>
+                    <span>${homeStats.avg || '.000'}</span>
                 </div>
                 <div class="stat-row">
                     <span>RBI</span>
-                    <span>${homeBatting.rbi || 0}</span>
+                    <span>${homeStats.rbi || 0}</span>
                 </div>
                 <div class="stat-row">
                     <span>Strikeouts</span>
-                    <span>${homeBatting.strikeOuts || 0}</span>
+                    <span>${homeStats.strikeOuts || 0}</span>
                 </div>
             </div>
             <div class="stat-column">
                 <h4>${awayTeam.name || 'Away Team'}</h4>
                 <div class="stat-row">
                     <span>Hits</span>
-                    <span>${awayBatting.hits || 0}</span>
+                    <span>${awayStats.hits || 0}</span>
                 </div>
                 <div class="stat-row">
                     <span>Runs</span>
@@ -1339,23 +1264,142 @@ function updateGameStatsModal(gameData, highlights, homeRuns = []) {
                 </div>
                 <div class="stat-row">
                     <span>Home Runs</span>
-                    <span>${awayBatting.homeRuns || 0}</span>
+                    <span>${awayStats.homeRuns || 0}</span>
                 </div>
                 <div class="stat-row">
                     <span>Batting Avg</span>
-                    <span>${awayBatting.avg || '.000'}</span>
+                    <span>${awayStats.avg || '.000'}</span>
                 </div>
                 <div class="stat-row">
                     <span>RBI</span>
-                    <span>${awayBatting.rbi || 0}</span>
+                    <span>${awayStats.rbi || 0}</span>
                 </div>
                 <div class="stat-row">
                     <span>Strikeouts</span>
-                    <span>${awayBatting.strikeOuts || 0}</span>
+                    <span>${awayStats.strikeOuts || 0}</span>
                 </div>
             </div>
         </div>
     `;
+    
+    // Update highlights section
+    const highlightsContainer = modal.querySelector('.highlights-section');
+    const highlightsGrid = highlightsContainer.querySelector('.highlights-grid');
+    const noHighlights = highlightsContainer.querySelector('.no-highlights');
+
+    if (highlights && highlights.length > 0) {
+        noHighlights.classList.add('hidden');
+        
+        // Categorize highlights
+        const categorizedHighlights = highlights.reduce((acc, highlight) => {
+            const title = highlight.title?.toLowerCase() || '';
+            const description = highlight.description?.toLowerCase() || '';
+            
+            // Determine category based on content
+            let category = 'other';
+            if (title.includes('home run') || title.includes('scores') || 
+                description.includes('rbi') || description.includes('runs') ||
+                title.includes('hits') || title.includes('singles') ||
+                title.includes('doubles') || title.includes('triples')) {
+                category = 'scoring';
+            } else if (title.includes('catch') || title.includes('defense') || 
+                      title.includes('play') || title.includes('out') ||
+                      title.includes('strikeout') || title.includes('throws')) {
+                category = 'defense';
+            }
+            
+            if (!acc[category]) {
+                acc[category] = [];
+            }
+            acc[category].push(highlight);
+            return acc;
+        }, { scoring: [], defense: [], other: [] });
+
+        // Function to render highlights
+        const renderHighlights = (filteredHighlights) => {
+            highlightsGrid.innerHTML = filteredHighlights.map(highlight => {
+                const videoUrl = highlight.playbacks?.find(p => p.name === 'mp4Avc')?.url || '';
+                const duration = highlight.duration || '';
+                const thumbnail = highlight.thumbnail || '';
+                
+                return `
+                    <div class="highlight-card" data-category="${highlight.category}">
+                        <div class="highlight-video" data-video-url="${videoUrl}">
+                            <div class="thumbnail-container">
+                                <img src="${thumbnail}" alt="${highlight.title}" loading="lazy">
+                                <div class="play-overlay">
+                                    <i class="fas fa-play"></i>
+                                    ${duration ? `<span class="duration">${duration}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="highlight-info">
+                            <h4>${highlight.title}</h4>
+                            ${highlight.description ? `<p>${highlight.description}</p>` : ''}
+                            <div class="highlight-meta">
+                                <span class="category-tag">
+                                    <i class="fas ${highlight.category === 'scoring' ? 'fa-baseball' : 
+                                                   highlight.category === 'defense' ? 'fa-shield' : 'fa-star'}"></i>
+                                    ${highlight.category.charAt(0).toUpperCase() + highlight.category.slice(1)}
+                                </span>
+                                <button class="btn-play" onclick="showVideoPlayer('${videoUrl}')">
+                                    Watch <i class="fas fa-play"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add click handlers for video playback
+            highlightsGrid.querySelectorAll('.highlight-video').forEach(video => {
+                video.addEventListener('click', () => {
+                    const videoUrl = video.dataset.videoUrl;
+                    if (videoUrl) {
+                        showVideoPlayer(videoUrl);
+                    }
+                });
+            });
+        };
+
+        // Add category to each highlight
+        Object.entries(categorizedHighlights).forEach(([category, categoryHighlights]) => {
+            categoryHighlights.forEach(highlight => {
+                highlight.category = category;
+            });
+        });
+
+        // Combine all highlights
+        const allHighlights = [
+            ...categorizedHighlights.scoring,
+            ...categorizedHighlights.defense,
+            ...categorizedHighlights.other
+        ];
+
+        // Initial render
+        renderHighlights(allHighlights);
+
+        // Setup filter buttons
+        const filterButtons = highlightsContainer.querySelectorAll('.filter-btn');
+        filterButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Update active state
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+
+                // Filter highlights
+                const filter = button.dataset.filter;
+                const filteredHighlights = filter === 'all' 
+                    ? allHighlights 
+                    : allHighlights.filter(h => h.category === filter);
+
+                renderHighlights(filteredHighlights);
+            });
+        });
+    } else {
+        highlightsGrid.innerHTML = '';
+        noHighlights.classList.remove('hidden');
+    }
 }
 
 function getOrdinalSuffix(num) {
