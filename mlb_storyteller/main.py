@@ -14,6 +14,9 @@ from dotenv import load_dotenv
 from typing import List, Optional
 from datetime import datetime
 from bson import ObjectId
+from flask import Flask, jsonify
+from flask_cors import CORS
+from mlb_storyteller.api.game_stats_routes import router as game_stats_router
 
 # Load environment variables
 load_dotenv()
@@ -57,6 +60,7 @@ if os.path.exists(static_dir):
 
 # Include routers
 app.include_router(audio.router, prefix="/api")
+app.include_router(game_stats_router)
 
 # Health check endpoint
 @app.get("/health")

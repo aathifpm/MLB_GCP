@@ -33,7 +33,7 @@ const elements = {
     header: document.querySelector('.header'),
     generateStoryBtn: document.getElementById('generateStoryBtn'),
     formError: document.getElementById('formError'),
-    formErrorMessage: document.getElementById('formError').querySelector('.error-message'),
+    formErrorMessage: document.getElementById('formError')?.querySelector('.error-message'),
     languageSelect: document.getElementById('languageSelect'),
     previewVoiceBtn: document.getElementById('previewVoiceBtn'),
     tabButtons: document.querySelectorAll('.tab-btn'),
@@ -41,14 +41,10 @@ const elements = {
     speedValue: document.getElementById('speedValue'),
     pitchValue: document.getElementById('pitchValue'),
     gameSearch: document.getElementById('gameSearch'),
-    dateChips: document.getElementById('dateChips'),
-    dateNavPrev: document.querySelector('.date-nav.prev'),
-    dateNavNext: document.querySelector('.date-nav.next'),
+    sliderPrev: document.querySelector('.slider-nav.prev'),
+    sliderNext: document.querySelector('.slider-nav.next'),
     statusChips: document.querySelectorAll('.chip[data-filter]'),
-    sortChips: document.querySelectorAll('.chip[data-sort]'),
-    pageNumbers: document.getElementById('pageNumbers'),
-    prevPage: document.getElementById('prevPage'),
-    nextPage: document.getElementById('nextPage')
+    sortChips: document.querySelectorAll('.chip[data-sort]')
 };
 
 // State
@@ -62,12 +58,9 @@ let storyDisplayTimeout = null;
 const gameState = {
     allGames: [],
     filteredGames: [],
-    currentPage: 1,
-    gamesPerPage: 9,
     currentFilter: 'all',
     currentSort: 'date-asc',
     searchQuery: '',
-    selectedDate: null,
     selectedGame: null,
     isModalOpen: false
 };
@@ -98,6 +91,7 @@ async function init() {
     setupEventListeners();
     setupScrollHandlers();
     setupRangeInputs();
+    initializePreferencesForm();
 }
 
 // Setup scroll handlers
@@ -206,6 +200,9 @@ async function loadGames() {
             throw new Error(data.error || 'Failed to load games');
         }
         
+        // Add minimal delay to ensure smooth transition
+        await new Promise(resolve => setTimeout(resolve, 300)); // Reduced from default timing
+        
         renderGames(data.dates || []);
         showToast('Games loaded successfully', 'success');
     } catch (error) {
@@ -225,123 +222,52 @@ function renderGames(dates) {
             dateObj: new Date(game.gameDate)
         })));
     }, []);
-
-    // Render date chips
-    renderDateChips(dates);
     
     // Apply initial filters and render
     filterAndRenderGames();
 }
 
-function renderDateChips(dates) {
-    elements.dateChips.innerHTML = '';
-    
-    dates.forEach(date => {
-        const dateObj = new Date(date.date);
-        const chip = document.createElement('button');
-        chip.className = 'date-chip';
-        chip.dataset.date = date.date;
-        chip.textContent = dateObj.toLocaleDateString('en-US', { 
-            weekday: 'short', 
-            month: 'short', 
-            day: 'numeric' 
-        });
-        
-        if (date.date === gameState.selectedDate) {
-            chip.classList.add('active');
-        }
-        
-        chip.addEventListener('click', () => {
-            document.querySelectorAll('.date-chip').forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            gameState.selectedDate = date.date;
-            filterAndRenderGames();
-        });
-        
-        elements.dateChips.appendChild(chip);
-    });
-}
-
 function filterAndRenderGames() {
     // Apply filters
-    let filtered = gameState.allGames;
-    
-    // Date filter
-    if (gameState.selectedDate) {
-        filtered = filtered.filter(game => {
-            const gameDate = new Date(game.gameDate).toLocaleDateString();
-            const selectedDate = new Date(gameState.selectedDate).toLocaleDateString();
-            return gameDate === selectedDate;
-        });
-    }
-    
-    // Status filter
-    if (gameState.currentFilter !== 'all') {
-        filtered = filtered.filter(game => {
-            const status = game.status.detailedState.toLowerCase();
-            switch (gameState.currentFilter) {
-                case 'upcoming':
-                    return status.includes('scheduled') || status.includes('pre-game');
-                case 'live':
-                    return status.includes('in progress') || status.includes('delayed');
-                case 'final':
-                    return status.includes('final');
-                default:
-                    return true;
-            }
-        });
-    }
-    
-    // Search filter
-    if (gameState.searchQuery) {
-        const query = gameState.searchQuery.toLowerCase();
-        filtered = filtered.filter(game => 
-            game.teams.home.team.name.toLowerCase().includes(query) ||
-            game.teams.away.team.name.toLowerCase().includes(query)
-        );
-    }
-    
-    // Sort
-    filtered.sort((a, b) => {
+    gameState.filteredGames = gameState.allGames.filter(game => {
+        const status = game.status.detailedState.toLowerCase();
+        const matchesFilter = gameState.currentFilter === 'all' || 
+            (gameState.currentFilter === 'upcoming' && (status.includes('scheduled') || status.includes('pre-game'))) ||
+            (gameState.currentFilter === 'live' && (status.includes('in progress') || status.includes('delayed'))) ||
+            (gameState.currentFilter === 'final' && status.includes('final'));
+            
+        const matchesSearch = !gameState.searchQuery || 
+            game.teams.away.team.name.toLowerCase().includes(gameState.searchQuery.toLowerCase()) ||
+            game.teams.home.team.name.toLowerCase().includes(gameState.searchQuery.toLowerCase());
+        return matchesFilter && matchesSearch;
+    });
+
+    // Apply sorting
+    gameState.filteredGames.sort((a, b) => {
         switch (gameState.currentSort) {
             case 'date-asc':
                 return a.dateObj - b.dateObj;
             case 'date-desc':
                 return b.dateObj - a.dateObj;
             case 'team':
-                return a.teams.home.team.name.localeCompare(b.teams.home.team.name);
+                return a.teams.away.team.name.localeCompare(b.teams.away.team.name);
             default:
                 return 0;
         }
     });
     
-    gameState.filteredGames = filtered;
     renderGameCards();
-    renderPagination();
 }
 
 function renderGameCards() {
     elements.gamesList.innerHTML = '';
     
-    const startIndex = (gameState.currentPage - 1) * gameState.gamesPerPage;
-    const endIndex = startIndex + gameState.gamesPerPage;
-    const gamesToShow = gameState.filteredGames.slice(startIndex, endIndex);
-    
-    if (gamesToShow.length === 0) {
-        elements.gamesList.innerHTML = `
-            <div class="no-games">
-                <i class="fas fa-search"></i>
-                <p>No games found matching your criteria</p>
-            </div>
-        `;
-        return;
-    }
-    
-    gamesToShow.forEach(game => {
+    gameState.filteredGames.forEach(game => {
         const card = document.createElement('div');
         card.className = 'game-card';
         card.dataset.gameId = game.gamePk;
         
+        // Determine game status and class
         const status = game.status.detailedState.toLowerCase();
         let statusClass = 'upcoming';
         if (status.includes('in progress') || status.includes('delayed')) {
@@ -350,97 +276,75 @@ function renderGameCards() {
             statusClass = 'final';
         }
         
-        const homeTeam = game.teams.home.team;
-        const awayTeam = game.teams.away.team;
-        const gameTime = new Date(game.gameDate);
+        const statusDiv = document.createElement('div');
+        statusDiv.className = `game-status ${statusClass}`;
+        statusDiv.textContent = game.status.detailedState;
         
-        card.innerHTML = `
-            <div class="game-status ${statusClass}">${game.status.detailedState}</div>
-            <div class="game-teams">
+        const teams = document.createElement('div');
+        teams.className = 'game-teams';
+        teams.innerHTML = `
                 <div class="team-info">
-                    <div class="team-name">${awayTeam.name}</div>
-                    <div class="team-record">${game.teams.away.leagueRecord?.wins || 0}-${game.teams.away.leagueRecord?.losses || 0}</div>
+                <div class="team-name">${game.teams.away.team.name}</div>
+                <div class="team-record">${game.teams.away.leagueRecord.wins}-${game.teams.away.leagueRecord.losses}</div>
+                <div class="game-score">${game.teams.away.score || '-'}</div>
                 </div>
                 <div class="vs-divider">VS</div>
                 <div class="team-info">
-                    <div class="team-name">${homeTeam.name}</div>
-                    <div class="team-record">${game.teams.home.leagueRecord?.wins || 0}-${game.teams.home.leagueRecord?.losses || 0}</div>
-                </div>
-            </div>
-            <div class="game-details">
+                <div class="team-name">${game.teams.home.team.name}</div>
+                <div class="team-record">${game.teams.home.leagueRecord.wins}-${game.teams.home.leagueRecord.losses}</div>
+                <div class="game-score">${game.teams.home.score || '-'}</div>
+                    </div>
+        `;
+        
+        const details = document.createElement('div');
+        details.className = 'game-details';
+        details.innerHTML = `
                 <div class="game-info">
-                    <i class="far fa-calendar"></i>
-                    ${gameTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                <i class="fas fa-calendar"></i>
+                ${new Date(game.gameDate).toLocaleDateString()}
                 </div>
                 <div class="game-info">
-                    <i class="far fa-clock"></i>
-                    ${gameTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                </div>
-                <div class="game-info">
-                    <i class="fas fa-map-marker-alt"></i>
-                    ${game.venue?.name || 'TBD'}
-                </div>
+                <i class="fas fa-clock"></i>
+                ${new Date(game.gameDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>
         `;
         
-        card.addEventListener('click', () => {
-            if (!gameState.isModalOpen) {
-                showGameStatsModal(game);
-            }
-        });
+        card.appendChild(statusDiv);
+        card.appendChild(teams);
+        card.appendChild(details);
+        
+        card.addEventListener('click', () => selectGame(game.gamePk, card));
         elements.gamesList.appendChild(card);
     });
+
+    // Setup slider navigation
+    setupSliderNavigation();
 }
 
-function renderPagination() {
-    const totalPages = Math.ceil(gameState.filteredGames.length / gameState.gamesPerPage);
-    elements.pageNumbers.innerHTML = '';
-    elements.prevPage.disabled = gameState.currentPage === 1;
-    elements.nextPage.disabled = gameState.currentPage === totalPages;
+function setupSliderNavigation() {
+    const slider = elements.gamesList;
+    const scrollAmount = 300; // Width of one card
 
-    // Helper function to create page button
-    const createPageButton = (pageNum, isActive = false, isEllipsis = false) => {
-        const button = document.createElement('button');
-        button.className = `page-number ${isActive ? 'active' : ''} ${isEllipsis ? 'ellipsis' : ''}`;
-        button.textContent = isEllipsis ? '...' : pageNum;
-        
-        if (!isEllipsis) {
-            button.addEventListener('click', () => {
-                gameState.currentPage = pageNum;
-                renderGameCards();
-                renderPagination();
-            });
+    elements.sliderPrev?.addEventListener('click', () => {
+        slider.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    });
+
+    elements.sliderNext?.addEventListener('click', () => {
+        slider.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    });
+
+    // Update navigation buttons visibility
+    const updateNavButtons = () => {
+        if (elements.sliderPrev && elements.sliderNext) {
+            elements.sliderPrev.style.display = slider.scrollLeft > 0 ? 'flex' : 'none';
+            elements.sliderNext.style.display = 
+                slider.scrollLeft < (slider.scrollWidth - slider.clientWidth) ? 'flex' : 'none';
         }
-        
-        return button;
     };
 
-    // Always show first page
-    elements.pageNumbers.appendChild(createPageButton(1, gameState.currentPage === 1));
-
-    // Calculate range of pages to show
-    let startPage = Math.max(2, gameState.currentPage - 3);
-    let endPage = Math.min(totalPages - 1, gameState.currentPage + 3);
-
-    // Add ellipsis after first page if needed
-    if (startPage > 2) {
-        elements.pageNumbers.appendChild(createPageButton(null, false, true));
-    }
-
-    // Add pages within range
-    for (let i = startPage; i <= endPage; i++) {
-        elements.pageNumbers.appendChild(createPageButton(i, gameState.currentPage === i));
-    }
-
-    // Add ellipsis before last page if needed
-    if (endPage < totalPages - 1) {
-        elements.pageNumbers.appendChild(createPageButton(null, false, true));
-    }
-
-    // Always show last page if there is more than one page
-    if (totalPages > 1) {
-        elements.pageNumbers.appendChild(createPageButton(totalPages, gameState.currentPage === totalPages));
-    }
+    slider.addEventListener('scroll', updateNavButtons);
+    window.addEventListener('resize', updateNavButtons);
+    updateNavButtons();
 }
 
 // Select game with enhanced feedback
@@ -456,13 +360,14 @@ function selectGame(gameId, card) {
     card.classList.add('selected');
     card.setAttribute('aria-selected', 'true');
     
-    // Reset story section
-    updateStoryDisplay('', false);
-    elements.storyPreferences.classList.remove('hidden');
-    
-    // Smooth scroll to preferences
-    elements.storyPreferences.scrollIntoView({ behavior: 'smooth' });
-    showToast('Game selected', 'success');
+    // Find the selected game data
+    const selectedGame = gameState.filteredGames.find(game => game.gamePk === gameId);
+    if (selectedGame) {
+        // Store selected game in state
+        gameState.selectedGame = selectedGame;
+        // Directly show story preferences
+        showStoryPreferences();
+    }
 }
 
 // Add these utility functions
@@ -524,21 +429,42 @@ function updateStoryDisplay(text, shouldShow = true) {
 }
 
 // Generate story with enhanced error handling and validation
-async function generateStory(preferences) {
+async function generateStory(event) {
+    event.preventDefault();
+    
     if (isGeneratingStory) {
         showToast('Story generation in progress...', 'info');
         return;
     }
 
-    if (!selectedGameId) {
+    if (!gameState.selectedGame) {
         showFormError('Please select a game first');
         return;
     }
 
-    if (!preferences.focus || preferences.focus.length === 0) {
+    // Get all form data
+    const form = document.getElementById('preferencesForm');
+    const formData = new FormData(form);
+    
+    // Get checked focus areas
+    const focusAreas = Array.from(form.querySelectorAll('input[name="focus"]:checked')).map(cb => cb.value);
+    
+    if (focusAreas.length === 0) {
         showFormError('Please select at least one focus area');
         return;
     }
+
+    // Get additional options
+    const includePlayerStats = form.querySelector('input[name="include_player_stats"]').checked;
+    const highlightKeyMoments = form.querySelector('input[name="highlight_key_moments"]').checked;
+    
+    const preferences = {
+        style: formData.get('style'),
+        focus: focusAreas,
+        length: formData.get('length'),
+        include_player_stats: includePlayerStats,
+        highlight_key_moments: highlightKeyMoments
+    };
     
     isGeneratingStory = true;
     hideFormError();
@@ -547,13 +473,13 @@ async function generateStory(preferences) {
 
     try {
         const requestData = {
-            game_id: String(selectedGameId),
+            game_id: String(gameState.selectedGame.gamePk),
             preferences: {
                 style: preferences.style || 'dramatic',
                 focus_areas: preferences.focus,
                 story_length: preferences.length || 'medium',
-                include_player_stats: true,
-                highlight_key_moments: true,
+                include_player_stats: preferences.include_player_stats,
+                highlight_key_moments: preferences.highlight_key_moments,
                 tone: preferences.style
             }
         };
@@ -591,10 +517,9 @@ async function generateStory(preferences) {
         elements.audioPlayer.classList.add('hidden');
         
         // Update the display with a slight delay to ensure proper animation
-        setTimeout(() => {
-            updateStoryDisplay(currentStoryText, true);
-            showToast('Story generated successfully', 'success');
-        }, 100);
+        await new Promise(resolve => setTimeout(resolve, 400));
+        updateStoryDisplay(currentStoryText, true);
+        showToast('Story generated successfully', 'success');
 
     } catch (error) {
         console.error('Failed to generate story:', error);
@@ -605,6 +530,29 @@ async function generateStory(preferences) {
         setButtonLoading(elements.generateStoryBtn, false);
         hideLoading();
     }
+}
+
+// Initialize form with default values
+function initializePreferencesForm() {
+    const form = document.getElementById('preferencesForm');
+    
+    // Set default values for dropdowns
+    form.querySelector('#storyStyle').value = 'dramatic';
+    form.querySelector('#storyLength').value = 'medium';
+    
+    // Set default checked state for checkboxes
+    const defaultFocusAreas = ['key_plays', 'player_performances', 'game_flow'];
+    defaultFocusAreas.forEach(area => {
+        const checkbox = form.querySelector(`input[name="focus"][value="${area}"]`);
+        if (checkbox) checkbox.checked = true;
+    });
+    
+    // Set default checked state for additional options
+    form.querySelector('input[name="include_player_stats"]').checked = true;
+    form.querySelector('input[name="highlight_key_moments"]').checked = true;
+    
+    // Add form submit handler
+    form.addEventListener('submit', generateStory);
 }
 
 // Generate audio with enhanced error handling
@@ -656,6 +604,9 @@ async function generateAudio() {
         elements.downloadLink.classList.remove('hidden');
         elements.shareAudioBtn.classList.remove('hidden');
         elements.audioPlayer.classList.remove('hidden');
+        
+        // Add minimal delay for smooth transition
+        await new Promise(resolve => setTimeout(resolve, 350)); // Reduced from default timing
         
         showToast('Audio generated successfully', 'success');
     } catch (error) {
@@ -788,8 +739,35 @@ async function previewVoice() {
 
 // Setup event listeners with enhanced interaction handling
 function setupEventListeners() {
-    elements.seasonSelect.addEventListener('change', loadGames);
-    elements.gameTypeSelect.addEventListener('change', loadGames);
+    // Season and game type change handlers
+    elements.seasonSelect?.addEventListener('change', loadGames);
+    elements.gameTypeSelect?.addEventListener('change', loadGames);
+    
+    // Game status filter handlers
+    elements.statusChips?.forEach(chip => {
+        chip.addEventListener('click', () => {
+            elements.statusChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            gameState.currentFilter = chip.dataset.filter;
+            filterAndRenderGames();
+        });
+    });
+    
+    // Sort handlers
+    elements.sortChips?.forEach(chip => {
+        chip.addEventListener('click', () => {
+            elements.sortChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            gameState.currentSort = chip.dataset.sort;
+            filterAndRenderGames();
+        });
+    });
+    
+    // Search handler
+    elements.gameSearch?.addEventListener('input', debounce(() => {
+        gameState.searchQuery = elements.gameSearch.value.trim().toLowerCase();
+        filterAndRenderGames();
+    }, 300));
     
     elements.preferencesForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -822,7 +800,7 @@ function setupEventListeners() {
         };
 
         console.log('Form preferences:', preferences);
-        await generateStory(preferences);
+        await generateStory(e);
     });
     
     elements.generateAudioBtn.addEventListener('click', generateAudio);
@@ -855,69 +833,6 @@ function setupEventListeners() {
     // Setup tabs and range inputs
     setupTabs();
     setupRangeInputs();
-
-    // Game search
-    elements.gameSearch.addEventListener('input', debounce(() => {
-        gameState.searchQuery = elements.gameSearch.value;
-        gameState.currentPage = 1;
-        filterAndRenderGames();
-    }, 300));
-    
-    // Status filter chips
-    elements.statusChips.forEach(chip => {
-        chip.addEventListener('click', () => {
-            elements.statusChips.forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            gameState.currentFilter = chip.dataset.filter;
-            gameState.currentPage = 1;
-            filterAndRenderGames();
-        });
-    });
-    
-    // Sort chips
-    elements.sortChips.forEach(chip => {
-        chip.addEventListener('click', () => {
-            elements.sortChips.forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            gameState.currentSort = chip.dataset.sort;
-            filterAndRenderGames();
-        });
-    });
-    
-    // Date navigation
-    elements.dateNavPrev.addEventListener('click', () => {
-        const chips = Array.from(elements.dateChips.children);
-        const activeIndex = chips.findIndex(chip => chip.classList.contains('active'));
-        if (activeIndex > 0) {
-            chips[activeIndex - 1].click();
-            chips[activeIndex - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-    });
-    
-    elements.dateNavNext.addEventListener('click', () => {
-        const chips = Array.from(elements.dateChips.children);
-        const activeIndex = chips.findIndex(chip => chip.classList.contains('active'));
-        if (activeIndex < chips.length - 1) {
-            chips[activeIndex + 1].click();
-            chips[activeIndex + 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-    });
-    
-    // Pagination
-    elements.prevPage.addEventListener('click', () => {
-        if (gameState.currentPage > 1) {
-            gameState.currentPage--;
-            filterAndRenderGames();
-        }
-    });
-    
-    elements.nextPage.addEventListener('click', () => {
-        const totalPages = Math.ceil(gameState.filteredGames.length / gameState.gamesPerPage);
-        if (gameState.currentPage < totalPages) {
-            gameState.currentPage++;
-            filterAndRenderGames();
-        }
-    });
 
     // Add modal close handlers
     document.querySelector('.close-modal').addEventListener('click', hideGameStatsModal);
@@ -1105,7 +1020,7 @@ function debounce(func, wait) {
     };
 }
 
-// Add modal handling functions
+// Update showStoryPreferences to handle the transition smoothly
 function showStoryPreferences() {
     // Get the story preferences section
     const preferencesSection = document.getElementById('storyPreferences');
@@ -1116,356 +1031,19 @@ function showStoryPreferences() {
     // Scroll to the section smoothly
     preferencesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     
-    // Update UI state
-    selectedGameId = gameState.selectedGame.gamePk;
-    
     // Reset any previous story
     updateStoryDisplay('', false);
 }
 
-async function showGameStatsModal(game) {
-    try {
-        showLoadingOverlay();
-        
-        // Store selected game in state
-        gameState.selectedGame = game;
-        
-        // Fetch game data and highlights
-        const [gameData, highlights, homeRuns] = await Promise.all([
-            fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GAME_FEED}/${game.gamePk}/feed`).then(res => res.json()),
-            fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GAME_FEED}/${game.gamePk}/highlights`).then(res => res.json()),
-            fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.HOME_RUNS}/${new Date(game.gameDate).getFullYear()}`).then(res => res.json())
-        ]);
-        
-        // Filter home runs for this game
-        const gameHomeRuns = homeRuns.filter(hr => hr.play_id.toString() === game.gamePk.toString());
-        
-        // Update modal with all data
-        updateGameStatsModal(gameData, highlights, gameHomeRuns);
-        
-        // Show modal
-        const modal = document.getElementById('gameStatsModal');
-        modal.classList.remove('hidden');
-        modal.classList.add('show');
-        document.body.classList.add('modal-open');
-        gameState.isModalOpen = true;
-        
-    } catch (error) {
-        console.error('Error showing game stats:', error);
-        showToast('Failed to load game statistics', 'error');
-    } finally {
-        hideLoadingOverlay();
-    }
+// Remove unused functions and elements
+const gameStatsModal = document.getElementById('gameStatsModal');
+if (gameStatsModal) {
+    gameStatsModal.remove();
 }
 
-function hideGameStatsModal() {
-    const modal = document.getElementById('gameStatsModal');
-    modal.classList.remove('show');
-    setTimeout(() => {
-        modal.classList.add('hidden');
-        document.body.classList.remove('modal-open');
-        gameState.isModalOpen = false;
-    }, 300);
-}
-
-function updateGameStatsModal(gameData, highlights, homeRuns = []) {
-    const modal = document.getElementById('gameStatsModal');
-    if (!modal) return;
-    
-    // Get teams data
-    const teams = gameData.gameData?.teams || {};
-    const homeTeam = teams.home || {};
-    const awayTeam = teams.away || {};
-    
-    // Get linescore for current game state
-    const linescore = gameData.liveData?.linescore || {};
-    const homeScore = linescore.teams?.home?.runs || 0;
-    const awayScore = linescore.teams?.away?.runs || 0;
-    
-    // Get boxscore for detailed stats
-    const boxscore = gameData.liveData?.boxscore?.teams || {};
-    const homeStats = boxscore.home?.teamStats?.batting || {};
-    const awayStats = boxscore.away?.teamStats?.batting || {};
-    
-    // Get game info
-    const status = gameData.gameData?.status?.detailedState || 'Scheduled';
-    const venue = gameData.gameData?.venue?.name || 'TBD';
-    const gameDate = gameData.gameData?.datetime?.dateTime || new Date().toISOString();
-    
-    // Update game summary
-    modal.querySelector('.game-summary').innerHTML = `
-        <div class="team-matchup">
-            <div class="team home">
-                <img src="https://www.mlbstatic.com/team-logos/${homeTeam.id}.svg" 
-                     alt="${homeTeam.name} logo" 
-                     class="team-logo"
-                     onerror="this.src='${STATIC_ASSETS.DEFAULT_TEAM_LOGO}'">
-                <h3>${homeTeam.name || 'Home Team'}</h3>
-                <p class="score">${homeScore}</p>
-            </div>
-            <div class="vs">VS</div>
-            <div class="team away">
-                <img src="https://www.mlbstatic.com/team-logos/${awayTeam.id}.svg" 
-                     alt="${awayTeam.name} logo" 
-                     class="team-logo"
-                     onerror="this.src='${STATIC_ASSETS.DEFAULT_TEAM_LOGO}'">
-                <h3>${awayTeam.name || 'Away Team'}</h3>
-                <p class="score">${awayScore}</p>
-            </div>
-        </div>
-        <div class="game-info">
-            <p><i class="fas fa-calendar"></i> ${new Date(gameDate).toLocaleDateString()}</p>
-            <p><i class="fas fa-map-marker-alt"></i> ${venue}</p>
-            <p><i class="fas fa-clock"></i> ${status}</p>
-        </div>
-    `;
-    
-    // Update game stats section with detailed batting stats
-    const statsContainer = modal.querySelector('.game-stats-section');
-    statsContainer.innerHTML = `
-        <h3><i class="fas fa-chart-bar"></i> Team Statistics</h3>
-        <div class="stats-grid">
-            <div class="stat-column">
-                <h4>${homeTeam.name || 'Home Team'}</h4>
-                <div class="stat-row">
-                    <span>Hits</span>
-                    <span>${homeStats.hits || 0}</span>
-                </div>
-                <div class="stat-row">
-                    <span>Runs</span>
-                    <span>${homeScore}</span>
-                </div>
-                <div class="stat-row">
-                    <span>Home Runs</span>
-                    <span>${homeStats.homeRuns || 0}</span>
-                </div>
-                <div class="stat-row">
-                    <span>Batting Avg</span>
-                    <span>${homeStats.avg || '.000'}</span>
-                </div>
-                <div class="stat-row">
-                    <span>RBI</span>
-                    <span>${homeStats.rbi || 0}</span>
-                </div>
-                <div class="stat-row">
-                    <span>Strikeouts</span>
-                    <span>${homeStats.strikeOuts || 0}</span>
-                </div>
-            </div>
-            <div class="stat-column">
-                <h4>${awayTeam.name || 'Away Team'}</h4>
-                <div class="stat-row">
-                    <span>Hits</span>
-                    <span>${awayStats.hits || 0}</span>
-                </div>
-                <div class="stat-row">
-                    <span>Runs</span>
-                    <span>${awayScore}</span>
-                </div>
-                <div class="stat-row">
-                    <span>Home Runs</span>
-                    <span>${awayStats.homeRuns || 0}</span>
-                </div>
-                <div class="stat-row">
-                    <span>Batting Avg</span>
-                    <span>${awayStats.avg || '.000'}</span>
-                </div>
-                <div class="stat-row">
-                    <span>RBI</span>
-                    <span>${awayStats.rbi || 0}</span>
-                </div>
-                <div class="stat-row">
-                    <span>Strikeouts</span>
-                    <span>${awayStats.strikeOuts || 0}</span>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Update highlights section
-    const highlightsContainer = modal.querySelector('.highlights-section');
-    const highlightsGrid = highlightsContainer.querySelector('.highlights-grid');
-    const noHighlights = highlightsContainer.querySelector('.no-highlights');
-
-    if (highlights && highlights.length > 0) {
-        noHighlights.classList.add('hidden');
-        
-        // Categorize highlights
-        const categorizedHighlights = highlights.reduce((acc, highlight) => {
-            const title = highlight.title?.toLowerCase() || '';
-            const description = highlight.description?.toLowerCase() || '';
-            
-            // Determine category based on content
-            let category = 'other';
-            if (title.includes('home run') || title.includes('scores') || 
-                description.includes('rbi') || description.includes('runs') ||
-                title.includes('hits') || title.includes('singles') ||
-                title.includes('doubles') || title.includes('triples')) {
-                category = 'scoring';
-            } else if (title.includes('catch') || title.includes('defense') || 
-                      title.includes('play') || title.includes('out') ||
-                      title.includes('strikeout') || title.includes('throws')) {
-                category = 'defense';
-            }
-            
-            if (!acc[category]) {
-                acc[category] = [];
-            }
-            acc[category].push(highlight);
-            return acc;
-        }, { scoring: [], defense: [], other: [] });
-
-        // Function to render highlights
-        const renderHighlights = (filteredHighlights) => {
-            highlightsGrid.innerHTML = filteredHighlights.map(highlight => {
-                const videoUrl = highlight.playbacks?.find(p => p.name === 'mp4Avc')?.url || '';
-                const duration = highlight.duration || '';
-                const thumbnail = highlight.thumbnail || '';
-                
-                return `
-                    <div class="highlight-card" data-category="${highlight.category}">
-                        <div class="highlight-video" data-video-url="${videoUrl}">
-                            <div class="thumbnail-container">
-                                <img src="${thumbnail}" alt="${highlight.title}" loading="lazy">
-                                <div class="play-overlay">
-                                    <i class="fas fa-play"></i>
-                                    ${duration ? `<span class="duration">${duration}</span>` : ''}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="highlight-info">
-                            <h4>${highlight.title}</h4>
-                            ${highlight.description ? `<p>${highlight.description}</p>` : ''}
-                            <div class="highlight-meta">
-                                <span class="category-tag">
-                                    <i class="fas ${highlight.category === 'scoring' ? 'fa-baseball' : 
-                                                   highlight.category === 'defense' ? 'fa-shield' : 'fa-star'}"></i>
-                                    ${highlight.category.charAt(0).toUpperCase() + highlight.category.slice(1)}
-                                </span>
-                                <button class="btn-play" onclick="showVideoPlayer('${videoUrl}')">
-                                    Watch <i class="fas fa-play"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            // Add click handlers for video playback
-            highlightsGrid.querySelectorAll('.highlight-video').forEach(video => {
-                video.addEventListener('click', () => {
-                    const videoUrl = video.dataset.videoUrl;
-                    if (videoUrl) {
-                        showVideoPlayer(videoUrl);
-                    }
-                });
-            });
-        };
-
-        // Add category to each highlight
-        Object.entries(categorizedHighlights).forEach(([category, categoryHighlights]) => {
-            categoryHighlights.forEach(highlight => {
-                highlight.category = category;
-            });
-        });
-
-        // Combine all highlights
-        const allHighlights = [
-            ...categorizedHighlights.scoring,
-            ...categorizedHighlights.defense,
-            ...categorizedHighlights.other
-        ];
-
-        // Initial render
-        renderHighlights(allHighlights);
-
-        // Setup filter buttons
-        const filterButtons = highlightsContainer.querySelectorAll('.filter-btn');
-        filterButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                // Update active state
-                filterButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-
-                // Filter highlights
-                const filter = button.dataset.filter;
-                const filteredHighlights = filter === 'all' 
-                    ? allHighlights 
-                    : allHighlights.filter(h => h.category === filter);
-
-                renderHighlights(filteredHighlights);
-            });
-        });
-    } else {
-        highlightsGrid.innerHTML = '';
-        noHighlights.classList.remove('hidden');
-    }
-}
-
-function getOrdinalSuffix(num) {
-    const j = num % 10;
-    const k = num % 100;
-    if (j == 1 && k != 11) return "st";
-    if (j == 2 && k != 12) return "nd";
-    if (j == 3 && k != 13) return "rd";
-    return "th";
-}
-
-// Add these loading overlay functions
-function showLoadingOverlay() {
-    const overlay = document.getElementById('loadingOverlay');
-    overlay.classList.remove('hidden');
-}
-
-function hideLoadingOverlay() {
-    const overlay = document.getElementById('loadingOverlay');
-    overlay.classList.add('hidden');
-}
-
-// Add video player modal to the DOM
-document.body.insertAdjacentHTML('beforeend', `
-    <div class="video-player-modal" id="videoPlayerModal">
-        <div class="video-container">
-            <video id="highlightVideo" controls></video>
-            <button class="close-video" onclick="hideVideoPlayer()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    </div>
-`);
-
-function showVideoPlayer(videoUrl) {
-    const modal = document.getElementById('videoPlayerModal');
-    const video = document.getElementById('highlightVideo');
-    
-    // Set video source and load it
-    video.src = videoUrl;
-    video.load();
-    
-    // Show modal
-    modal.classList.add('show');
-    
-    // Play video
-    video.play().catch(e => console.log('Auto-play prevented:', e));
-    
-    // Add event listener to pause video when modal is closed
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            hideVideoPlayer();
-        }
-    });
-}
-
-function hideVideoPlayer() {
-    const modal = document.getElementById('videoPlayerModal');
-    const video = document.getElementById('highlightVideo');
-    
-    // Pause and reset video
-    video.pause();
-    video.currentTime = 0;
-    
-    // Hide modal
-    modal.classList.remove('show');
+const videoPlayerModal = document.getElementById('videoPlayerModal');
+if (videoPlayerModal) {
+    videoPlayerModal.remove();
 }
 
 // Initialize the app

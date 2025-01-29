@@ -75,24 +75,12 @@
                             </div>
                         </div>
 
-                        <div class="games-dates">
-                            <button class="date-nav prev" aria-label="Previous date">
+                        <div class="games-slider-container">
+                            <button class="slider-nav prev" aria-label="Previous games">
                                 <i class="fas fa-chevron-left"></i>
                             </button>
-                            <div class="date-chips" id="dateChips"></div>
-                            <button class="date-nav next" aria-label="Next date">
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
-                        </div>
-
-                        <div id="gamesList" class="games-grid" role="list" aria-label="Available Games"></div>
-
-                        <div class="games-pagination">
-                            <button class="pagination-btn" id="prevPage" aria-label="Previous page">
-                                <i class="fas fa-chevron-left"></i>
-                            </button>
-                            <div class="page-numbers" id="pageNumbers"></div>
-                            <button class="pagination-btn" id="nextPage" aria-label="Next page">
+                            <div class="games-slider" id="gamesList" role="list" aria-label="Available Games"></div>
+                            <button class="slider-nav next" aria-label="Next games">
                                 <i class="fas fa-chevron-right"></i>
                             </button>
                         </div>
@@ -317,48 +305,14 @@
 
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay hidden" role="alert" aria-busy="true">
-        <div class="loader"></div>
-        <p class="loading-text">Processing your request...</p>
+        <div class="baseball-spinner">
+            <div class="baseball">⚾</div>
+        </div>
+        <p class="loading-text">Seventh-inning stretch...</p>
     </div>
 
     <!-- Toast Notifications Container -->
     <div id="toastContainer"></div>
-
-    <!-- Game Stats Modal -->
-    <div id="gameStatsModal" class="modal hidden" aria-labelledby="modalTitle" aria-modal="true">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Game Statistics</h2>
-                <button class="close-modal" onclick="hideGameStatsModal()" aria-label="Close modal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="game-summary"></div>
-                
-                <div class="stats-container">
-                    <div class="game-stats-section"></div>
-                    
-                    <div class="highlights-section">
-                        <div class="section-header">
-                            <h3><i class="fas fa-play-circle"></i> Game Highlights</h3>
-                            <div class="highlights-filter">
-                                <button class="filter-btn active" data-filter="all">All</button>
-                                <button class="filter-btn" data-filter="scoring">Scoring</button>
-                                <button class="filter-btn" data-filter="defense">Defense</button>
-                                <button class="filter-btn" data-filter="other">Other</button>
-                            </div>
-                        </div>
-                        <div class="highlights-grid"></div>
-                        <div class="no-highlights hidden">
-                            <i class="fas fa-video-slash"></i>
-                            <p>No highlights available for this game yet</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script src="../static/js/app.js"></script>
 </body>
