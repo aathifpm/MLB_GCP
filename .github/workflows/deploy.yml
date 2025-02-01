@@ -6,9 +6,19 @@ on:
   pull_request:
     branches: [ main ]
 
+# Add permissions configuration
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  deployments: write
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
     - uses: actions/checkout@v2
@@ -72,13 +82,18 @@ jobs:
         # Run tests using Docker Compose v2
         docker compose -f docker-compose.test.yml up --exit-code-from tests
 
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      if: github.ref == 'refs/heads/main'
+    - name: Setup Pages
+      uses: actions/configure-pages@v2
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v1
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./frontend
-        force_orphan: true
+        path: './frontend'
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v1
+      if: github.ref == 'refs/heads/main'
 
     - name: Deploy Services to GCP
       if: github.ref == 'refs/heads/main'
