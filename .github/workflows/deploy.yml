@@ -67,7 +67,8 @@ jobs:
           datastore.googleapis.com \
           vpcaccess.googleapis.com \
           servicenetworking.googleapis.com \
-          run.googleapis.com
+          run.googleapis.com \
+          texttospeech.googleapis.com
 
         # Create VPC network if it doesn't exist
         if ! gcloud compute networks describe mlb-network 2>/dev/null; then
@@ -153,6 +154,7 @@ jobs:
           --set-env-vars "REDIS_URL=redis://${REDIS_IP}:6379" \
           --set-env-vars "GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" \
           --set-env-vars "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
+          --set-env-vars "GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/google-cloud-credentials.json" \
           --add-cloudsql-instances=${{ secrets.GOOGLE_CLOUD_PROJECT }}:${{ secrets.GCP_REGION }}:mlb-db \
           --set-env-vars "CORS_ORIGINS=*" \
           --set-env-vars "CORS_ALLOW_CREDENTIALS=false" 

@@ -123,10 +123,7 @@ async def list_voices(language_code: str = "en-US"):
     try:
         tts_service = get_text_to_speech_service()
         if not tts_service:
-            return VoiceListResponse(
-                voices=[],
-                message="Text-to-speech service not available"
-            )
+            raise HTTPException(status_code=500, detail="Text-to-speech service not available")
 
         voices = await tts_service.get_available_voices(language_code)
         if not voices:
@@ -148,9 +145,4 @@ async def list_voices(language_code: str = "en-US"):
 
         return VoiceListResponse(voices=voice_list)
     except Exception as e:
-        # Log the error but return an empty list instead of throwing an error
-        print(f"Error listing voices: {str(e)}")
-        return VoiceListResponse(
-            voices=[],
-            message="Voice service temporarily unavailable"
-        ) 
+        raise HTTPException(status_code=500, detail=f"Error listing voices: {str(e)}") 

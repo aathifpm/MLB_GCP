@@ -123,6 +123,7 @@ class StoryGenerator:
         - If "dramatic": Create an emotional and engaging narrative that captures the excitement
         - If "analytical": Focus on statistics, strategy, and technical aspects
         - If "humorous": Add wit and light-hearted observations
+        Strictly avoid mentioning the style in the story.
         
         Make the story personal and engaging, highlighting moments that would interest this specific fan.
         """
