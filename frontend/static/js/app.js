@@ -174,12 +174,9 @@ async function loadGames() {
         const response = await fetch(`${API_BASE_URL}${ENDPOINTS.schedule}?season=${season}&game_type=${gameType}`, {
             method: 'GET',
             headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'Origin': window.location.origin
+                'Accept': 'application/json'
             },
-            mode: 'cors',
-            credentials: 'omit'
+            mode: 'cors'
         });
         
         if (!response.ok) {
@@ -973,26 +970,16 @@ async function loadVoices(languageCode) {
         const response = await fetch(`${API_BASE_URL}${ENDPOINTS.voices}?language_code=${languageCode}`, {
             method: 'GET',
             headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'Origin': window.location.origin
+                'Accept': 'application/json'
             },
-            mode: 'cors',
-            credentials: 'omit'
+            mode: 'cors'
         });
         
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Server response:', errorText);
-            throw new Error(`Failed to load voices: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        return data.voices;
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return await response.json();
     } catch (error) {
         console.error('Error loading voices:', error);
-        showToast(`Failed to load voices: ${error.message}`, 'error');
-        return [];
+        throw error;
     }
 }
 

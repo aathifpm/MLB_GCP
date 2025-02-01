@@ -39,12 +39,29 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_credentials=False,
+    expose_headers=["*"],
+    max_age=3600,
+)
+
+# Add custom middleware for additional headers
 @app.middleware("http")
 async def add_cors_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Methods"] = "*"
     response.headers["Access-Control-Allow-Headers"] = "*"
+    
+    # Handle preflight requests
+    if request.method == "OPTIONS":
+        response.headers["Access-Control-Max-Age"] = "3600"
+        
     return response
 
 # Get the absolute path to the frontend directory
@@ -272,11 +289,13 @@ if __name__ == "__main__":
     # Get port from environment variable or use default
     port = int(os.getenv("PORT", 8000))
     
-    # Run the application
+    # Run the application in production mode
     uvicorn.run(
         "mlb_storyteller.main:app",
         host="0.0.0.0",
         port=port,
-        reload=True,  # Enable auto-reload during development
-        workers=1     # Use single worker for development
-    ) 
+        reload=False,  # Disable auto-reload for production
+        workers=4,     # Use multiple workers for production
+        proxy_headers=True,  # Trust proxy headers 
+        forwarded_allow_ips='*'  # Allow forwarded IPs
+    )

@@ -152,4 +152,7 @@ jobs:
           --set-env-vars "DATASTORE_NAMESPACE=mlb_storyteller" \
           --set-env-vars "REDIS_URL=redis://${REDIS_IP}:6379" \
           --set-env-vars "GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" \
-          --set-env-vars "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" 
+          --set-env-vars "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
+          --add-cloudsql-instances=${{ secrets.GOOGLE_CLOUD_PROJECT }}:${{ secrets.GCP_REGION }}:mlb-db \
+          --set-env-vars "CORS_ORIGINS=*" \
+          --set-env-vars "CORS_ALLOW_CREDENTIALS=false" 
