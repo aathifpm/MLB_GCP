@@ -69,9 +69,9 @@ async def serve_index():
     """Serve the index.html file."""
     from fastapi.responses import FileResponse
     index_path = os.path.join(frontend_dir, "templates", "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    raise HTTPException(status_code=404, detail="Index file not found")
+    if not os.path.exists(index_path):
+        raise HTTPException(status_code=404, detail=f"Index file not found at {index_path}")
+    return FileResponse(index_path)
 
 # Health check endpoint
 @app.get("/health")
