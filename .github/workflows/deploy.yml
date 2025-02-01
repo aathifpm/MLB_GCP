@@ -141,6 +141,11 @@ jobs:
           --region ${{ secrets.GCP_REGION }} \
           --vpc-connector mlb-connector \
           --allow-unauthenticated \
+          --port 8080 \
+          --timeout 300 \
+          --cpu 1 \
+          --memory 512Mi \
+          --set-env-vars "PORT=8080" \
           --set-env-vars "DATASTORE_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" \
           --set-env-vars "DATASTORE_NAMESPACE=mlb_storyteller" \
           --set-env-vars "REDIS_URL=redis://${REDIS_IP}:6379" \
