@@ -1,6 +1,6 @@
 // Constants
 const API_BASE_URL = window.location.hostname === 'aathifpm.github.io' 
-    ? 'https://mlb-storyteller-rpzozepf3q-uc.a.run.app'  // Remove trailing slash
+    ? 'https://mlb-storyteller-553323728617.us-central1.run.app'  // Updated Cloud Run URL
     : 'http://localhost:8000';
 const ENDPOINTS = {
     health: '/health',

@@ -47,6 +47,7 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://127.0.0.1:8000",
         "https://aathifpm.github.io",  # GitHub Pages
+        "https://mlb-storyteller-553323728617.us-central1.run.app"  # Cloud Run URL
     ],
     allow_credentials=False,  # Set to False since we're not using credentials
     allow_methods=["*"],
