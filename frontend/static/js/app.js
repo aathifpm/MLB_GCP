@@ -1,5 +1,7 @@
 // Constants
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = window.location.hostname === 'aathifpm.github.io' 
+    ? 'https://mlb-storyteller-rpzozepf3q-uc.a.run.app/'  // Replace with your actual Cloud Run URL
+    : 'http://localhost:8000';
 const ENDPOINTS = {
     health: '/health',
     schedule: '/schedule',
@@ -69,7 +71,7 @@ const gameState = {
 
 // Update API configuration
 const API_CONFIG = {
-    BASE_URL: 'http://localhost:8000',
+    BASE_URL: API_BASE_URL,
     ENDPOINTS: {
         GAME_FEED: '/api/games',
         GAME_CONTENT: '/api/games',
@@ -81,8 +83,8 @@ const API_CONFIG = {
 
 // Add static assets configuration
 const STATIC_ASSETS = {
-    DEFAULT_TEAM_LOGO: `${API_CONFIG.BASE_URL}/static/images/default-team.png`,
-    DEFAULT_PLAYER_PHOTO: `${API_CONFIG.BASE_URL}/static/images/default-player.png`
+    DEFAULT_TEAM_LOGO: '/frontend/static/images/default-team.png',
+    DEFAULT_PLAYER_PHOTO: '/frontend/static/images/default-player.png'
 };
 
 // Initialize the application
