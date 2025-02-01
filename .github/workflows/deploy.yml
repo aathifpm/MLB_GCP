@@ -1,0 +1,104 @@
+name: Deploy MLB Storyteller
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v0
+      with:
+        project_id: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+        service_account_key: ${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}
+        export_default_credentials: true
+
+    - name: Configure Docker for GCP
+      run: |
+        gcloud auth configure-docker
+
+    - name: Build and Push MongoDB Container
+      run: |
+        docker build -t gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/mongodb:latest -f docker/mongodb.Dockerfile .
+        docker push gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/mongodb:latest
+
+    - name: Build and Push Redis Container
+      run: |
+        docker build -t gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/redis:latest -f docker/redis.Dockerfile .
+        docker push gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/redis:latest
+
+    - name: Create env file
+      run: |
+        echo "MONGODB_URI=mongodb://mongodb-service:27017" >> .env
+        echo "MONGODB_DB_NAME=mlb_storyteller" >> .env
+        echo "REDIS_URL=redis://redis-service:6379" >> .env
+        echo "CACHE_ENABLED=True" >> .env
+        echo "CACHE_TTL=3600" >> .env
+        echo "GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" >> .env
+        echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+        echo "GOOGLE_APPLICATION_CREDENTIALS=./mlb-storyteller-credentials.json" >> .env
+
+    - name: Setup Google Cloud Credentials
+      run: |
+        echo '${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}' > mlb-storyteller-credentials.json
+
+    - name: Run tests
+      run: |
+        docker-compose -f docker-compose.test.yml up --exit-code-from tests
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      if: github.ref == 'refs/heads/main'
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./frontend
+        force_orphan: true
+
+    - name: Deploy Services to GCP
+      if: github.ref == 'refs/heads/main'
+      run: |
+        # Deploy MongoDB
+        gcloud run deploy mongodb-service \
+          --image gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/mongodb:latest \
+          --platform managed \
+          --region ${{ secrets.GCP_REGION }} \
+          --allow-unauthenticated \
+          --port 27017
+
+        # Deploy Redis
+        gcloud run deploy redis-service \
+          --image gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/redis:latest \
+          --platform managed \
+          --region ${{ secrets.GCP_REGION }} \
+          --allow-unauthenticated \
+          --port 6379
+
+    - name: Deploy Application to Cloud Run
+      if: github.ref == 'refs/heads/main'
+      uses: google-github-actions/deploy-cloudrun@v0
+      with:
+        service: mlb-storyteller
+        region: ${{ secrets.GCP_REGION }}
+        credentials: ${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}
+        env_vars: |
+          MONGODB_URI=mongodb://mongodb-service:27017
+          REDIS_URL=redis://redis-service:6379
+          GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}
+          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} 

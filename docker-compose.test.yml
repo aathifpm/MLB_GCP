@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  mongodb:
+    build:
+      context: .
+      dockerfile: docker/mongodb.Dockerfile
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  redis:
+    build:
+      context: .
+      dockerfile: docker/redis.Dockerfile
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_DB_NAME=mlb_storyteller_test
+      - REDIS_URL=redis://redis:6379
+      - CACHE_ENABLED=True
+      - CACHE_TTL=3600
+    depends_on:
+      - mongodb
+      - redis
+    command: python -m pytest
+
+volumes:
+  mongodb_data:
+  redis_data: 

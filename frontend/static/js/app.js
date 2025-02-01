@@ -62,7 +62,9 @@ const gameState = {
     currentSort: 'date-asc',
     searchQuery: '',
     selectedGame: null,
-    isModalOpen: false
+    isModalOpen: false,
+    displayedGames: 10,  // Number of games currently displayed
+    hasMoreGames: false  // Whether there are more games to load
 };
 
 // Update API configuration
@@ -85,7 +87,6 @@ const STATIC_ASSETS = {
 
 // Initialize the application
 async function init() {
-    await checkHealth();
     await loadGames();
     await updateVoiceOptions('en-US');
     setupEventListeners();
@@ -161,31 +162,6 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
-// Health check with enhanced error handling
-async function checkHealth() {
-    try {
-        const response = await fetch(`${API_BASE_URL}${ENDPOINTS.health}`);
-        const data = await response.json();
-        
-        const statusDot = elements.healthStatus.querySelector('.status-dot');
-        const statusText = elements.healthStatus.querySelector('.status-text');
-        
-        if (data.status === 'healthy') {
-            statusDot.classList.add('healthy');
-            statusText.textContent = 'System is healthy';
-            showToast('Connected to server successfully', 'success');
-        } else {
-            statusDot.classList.remove('healthy');
-            statusText.textContent = 'System is experiencing issues';
-            showToast('System is experiencing issues', 'error');
-        }
-    } catch (error) {
-        console.error('Health check failed:', error);
-        elements.healthStatus.querySelector('.status-text').textContent = 'Unable to connect to server';
-        showToast('Failed to connect to server', 'error');
-    }
-}
-
 // Load games with enhanced error handling
 async function loadGames() {
     showLoading();
@@ -201,7 +177,7 @@ async function loadGames() {
         }
         
         // Add minimal delay to ensure smooth transition
-        await new Promise(resolve => setTimeout(resolve, 300)); // Reduced from default timing
+        await new Promise(resolve => setTimeout(resolve, 50));
         
         renderGames(data.dates || []);
         showToast('Games loaded successfully', 'success');
@@ -216,21 +192,41 @@ async function loadGames() {
 // Render games with enhanced UI
 function renderGames(dates) {
     // Store all games
-    gameState.allGames = dates.reduce((acc, date) => {
+    const allGamesData = dates.reduce((acc, date) => {
         return acc.concat(date.games.map(game => ({
             ...game,
             dateObj: new Date(game.gameDate)
         })));
     }, []);
+
+    // Filter out postponed games
+    gameState.allGames = allGamesData.filter(game => 
+        !game.status.detailedState.toLowerCase().includes('postponed')
+    );
+
+    // Sort by date (newest first)
+    gameState.allGames.sort((a, b) => b.dateObj - a.dateObj);
+    
+    // Update hasMoreGames state
+    gameState.hasMoreGames = gameState.allGames.length > gameState.displayedGames;
     
     // Apply initial filters and render
-    filterAndRenderGames();
+            filterAndRenderGames();
+        
+    // Update load more button visibility
+    updateLoadMoreButton();
 }
 
 function filterAndRenderGames() {
     // Apply filters
     gameState.filteredGames = gameState.allGames.filter(game => {
         const status = game.status.detailedState.toLowerCase();
+        
+        // Skip postponed games
+        if (status.includes('postponed')) {
+            return false;
+        }
+        
         const matchesFilter = gameState.currentFilter === 'all' || 
             (gameState.currentFilter === 'upcoming' && (status.includes('scheduled') || status.includes('pre-game'))) ||
             (gameState.currentFilter === 'live' && (status.includes('in progress') || status.includes('delayed'))) ||
@@ -239,6 +235,7 @@ function filterAndRenderGames() {
         const matchesSearch = !gameState.searchQuery || 
             game.teams.away.team.name.toLowerCase().includes(gameState.searchQuery.toLowerCase()) ||
             game.teams.home.team.name.toLowerCase().includes(gameState.searchQuery.toLowerCase());
+            
         return matchesFilter && matchesSearch;
     });
 
@@ -256,13 +253,20 @@ function filterAndRenderGames() {
         }
     });
     
-    renderGameCards();
+    // Take only the number of games to display
+    const gamesToShow = gameState.filteredGames.slice(0, gameState.displayedGames);
+    
+    // Add minimal delay before rendering
+    setTimeout(() => {
+        renderGameCards(gamesToShow);
+        updateLoadMoreButton();
+    }, 50);
 }
 
-function renderGameCards() {
+function renderGameCards(games) {
     elements.gamesList.innerHTML = '';
     
-    gameState.filteredGames.forEach(game => {
+    games.forEach(game => {
         const card = document.createElement('div');
         card.className = 'game-card';
         card.dataset.gameId = game.gamePk;
@@ -270,42 +274,64 @@ function renderGameCards() {
         // Determine game status and class
         const status = game.status.detailedState.toLowerCase();
         let statusClass = 'upcoming';
+        let statusIcon = '';
+        
         if (status.includes('in progress') || status.includes('delayed')) {
             statusClass = 'live';
+            statusIcon = '<i class="fas fa-circle"></i> ';
         } else if (status.includes('final')) {
             statusClass = 'final';
+            statusIcon = '<i class="fas fa-flag-checkered"></i> ';
+        } else {
+            statusIcon = '<i class="fas fa-clock"></i> ';
         }
         
         const statusDiv = document.createElement('div');
         statusDiv.className = `game-status ${statusClass}`;
-        statusDiv.textContent = game.status.detailedState;
+        statusDiv.innerHTML = `${statusIcon}${game.status.detailedState}`;
         
         const teams = document.createElement('div');
         teams.className = 'game-teams';
+        
+        // Format team records
+        const awayRecord = `${game.teams.away.leagueRecord.wins}-${game.teams.away.leagueRecord.losses}`;
+        const homeRecord = `${game.teams.home.leagueRecord.wins}-${game.teams.home.leagueRecord.losses}`;
+        
         teams.innerHTML = `
                 <div class="team-info">
                 <div class="team-name">${game.teams.away.team.name}</div>
-                <div class="team-record">${game.teams.away.leagueRecord.wins}-${game.teams.away.leagueRecord.losses}</div>
+                <div class="team-record">${awayRecord}</div>
                 <div class="game-score">${game.teams.away.score || '-'}</div>
                 </div>
                 <div class="vs-divider">VS</div>
                 <div class="team-info">
                 <div class="team-name">${game.teams.home.team.name}</div>
-                <div class="team-record">${game.teams.home.leagueRecord.wins}-${game.teams.home.leagueRecord.losses}</div>
+                <div class="team-record">${homeRecord}</div>
                 <div class="game-score">${game.teams.home.score || '-'}</div>
                     </div>
         `;
+        
+        const gameDate = new Date(game.gameDate);
+        const formattedDate = gameDate.toLocaleDateString(undefined, { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+        const formattedTime = gameDate.toLocaleTimeString(undefined, { 
+            hour: '2-digit', 
+            minute: '2-digit'
+        });
         
         const details = document.createElement('div');
         details.className = 'game-details';
         details.innerHTML = `
                 <div class="game-info">
                 <i class="fas fa-calendar"></i>
-                ${new Date(game.gameDate).toLocaleDateString()}
+                ${formattedDate}
                 </div>
                 <div class="game-info">
                 <i class="fas fa-clock"></i>
-                ${new Date(game.gameDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                ${formattedTime}
             </div>
         `;
         
@@ -313,9 +339,28 @@ function renderGameCards() {
         card.appendChild(teams);
         card.appendChild(details);
         
-        card.addEventListener('click', () => selectGame(game.gamePk, card));
+        // Add selection handling
+        card.addEventListener('click', () => {
+            selectGame(game.gamePk, card);
+            card.classList.add('selected');
+        });
+        
         elements.gamesList.appendChild(card);
     });
+
+    // Add load more button if there are more games
+    if (gameState.filteredGames.length > gameState.displayedGames) {
+        const loadMoreCard = document.createElement('div');
+        loadMoreCard.className = 'game-card load-more-card';
+        loadMoreCard.innerHTML = `
+            <button class="load-more-btn">
+                <i class="fas fa-plus-circle"></i>
+                <span>Load More Games</span>
+            </button>
+        `;
+        loadMoreCard.querySelector('.load-more-btn').addEventListener('click', loadMoreGames);
+        elements.gamesList.appendChild(loadMoreCard);
+    }
 
     // Setup slider navigation
     setupSliderNavigation();
@@ -516,10 +561,10 @@ async function generateStory(event) {
         elements.storyText.textContent = '';
         elements.audioPlayer.classList.add('hidden');
         
-        // Update the display with a slight delay to ensure proper animation
-        await new Promise(resolve => setTimeout(resolve, 400));
-        updateStoryDisplay(currentStoryText, true);
-        showToast('Story generated successfully', 'success');
+        // Update the display with a minimal delay
+        await new Promise(resolve => setTimeout(resolve, 50));
+            updateStoryDisplay(currentStoryText, true);
+            showToast('Story generated successfully', 'success');
 
     } catch (error) {
         console.error('Failed to generate story:', error);
@@ -535,24 +580,86 @@ async function generateStory(event) {
 // Initialize form with default values
 function initializePreferencesForm() {
     const form = document.getElementById('preferencesForm');
+    if (!form) return;
     
-    // Set default values for dropdowns
-    form.querySelector('#storyStyle').value = 'dramatic';
-    form.querySelector('#storyLength').value = 'medium';
+    // Set default values for dropdowns with proper error checking
+    const storyStyle = form.querySelector('#storyStyle');
+    if (storyStyle) {
+        storyStyle.value = 'dramatic';
+    }
     
-    // Set default checked state for checkboxes
+    const storyLength = form.querySelector('#storyLength');
+    if (storyLength) {
+        storyLength.value = 'medium';
+    }
+    
+    // Set default checked state for focus area checkboxes
     const defaultFocusAreas = ['key_plays', 'player_performances', 'game_flow'];
     defaultFocusAreas.forEach(area => {
         const checkbox = form.querySelector(`input[name="focus"][value="${area}"]`);
-        if (checkbox) checkbox.checked = true;
+        if (checkbox) {
+            checkbox.checked = true;
+        }
     });
     
     // Set default checked state for additional options
-    form.querySelector('input[name="include_player_stats"]').checked = true;
-    form.querySelector('input[name="highlight_key_moments"]').checked = true;
+    const playerStatsCheckbox = form.querySelector('input[name="include_player_stats"]');
+    if (playerStatsCheckbox) {
+        playerStatsCheckbox.checked = true;
+    }
+    
+    const keyMomentsCheckbox = form.querySelector('input[name="highlight_key_moments"]');
+    if (keyMomentsCheckbox) {
+        keyMomentsCheckbox.checked = true;
+    }
     
     // Add form submit handler
-    form.addEventListener('submit', generateStory);
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideFormError();
+
+        // Get and validate focus areas
+        const focusAreas = Array.from(form.querySelectorAll('input[name="focus"]:checked')).map(cb => cb.value);
+        if (focusAreas.length === 0) {
+            showFormError('Please select at least one focus area');
+            return;
+        }
+
+        // Get and validate narrative style
+        const style = storyStyle?.value;
+        if (!style) {
+            showFormError('Please select a narrative style');
+            return;
+        }
+
+        // Get and validate story length
+        const length = storyLength?.value;
+        if (!length) {
+            showFormError('Please select a story length');
+            return;
+        }
+
+        // Get additional options
+        const includePlayerStats = playerStatsCheckbox?.checked || false;
+        const highlightKeyMoments = keyMomentsCheckbox?.checked || false;
+
+        // Create preferences object
+        const preferences = {
+            style: style,
+            focus: focusAreas,
+            length: length,
+            include_player_stats: includePlayerStats,
+            highlight_key_moments: highlightKeyMoments
+        };
+
+        console.log('Form preferences:', preferences);
+        await generateStory(e);
+    });
+    
+    // Add change handlers to hide error message when user makes changes
+    form.querySelectorAll('input, select').forEach(input => {
+        input.addEventListener('change', hideFormError);
+    });
 }
 
 // Generate audio with enhanced error handling
@@ -606,7 +713,7 @@ async function generateAudio() {
         elements.audioPlayer.classList.remove('hidden');
         
         // Add minimal delay for smooth transition
-        await new Promise(resolve => setTimeout(resolve, 350)); // Reduced from default timing
+        await new Promise(resolve => setTimeout(resolve, 50));
         
         showToast('Audio generated successfully', 'success');
     } catch (error) {
@@ -740,36 +847,30 @@ async function previewVoice() {
 // Setup event listeners with enhanced interaction handling
 function setupEventListeners() {
     // Season and game type change handlers
-    elements.seasonSelect?.addEventListener('change', loadGames);
-    elements.gameTypeSelect?.addEventListener('change', loadGames);
+    document.getElementById('seasonSelect')?.addEventListener('change', loadGames);
+    document.getElementById('gameTypeSelect')?.addEventListener('change', loadGames);
     
-    // Game status filter handlers
-    elements.statusChips?.forEach(chip => {
-        chip.addEventListener('click', () => {
-            elements.statusChips.forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            gameState.currentFilter = chip.dataset.filter;
-            filterAndRenderGames();
-        });
+    // Game status filter handler
+    document.getElementById('statusFilter')?.addEventListener('change', (e) => {
+        gameState.currentFilter = e.target.value;
+        filterAndRenderGames();
     });
     
-    // Sort handlers
-    elements.sortChips?.forEach(chip => {
-        chip.addEventListener('click', () => {
-            elements.sortChips.forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            gameState.currentSort = chip.dataset.sort;
-            filterAndRenderGames();
-        });
+    // Sort handler
+    document.getElementById('sortGames')?.addEventListener('change', (e) => {
+        gameState.currentSort = e.target.value;
+        filterAndRenderGames();
     });
     
     // Search handler
-    elements.gameSearch?.addEventListener('input', debounce(() => {
-        gameState.searchQuery = elements.gameSearch.value.trim().toLowerCase();
+    document.getElementById('gameSearch')?.addEventListener('input', debounce(() => {
+        gameState.searchQuery = document.getElementById('gameSearch').value.trim().toLowerCase();
         filterAndRenderGames();
     }, 300));
     
-    elements.preferencesForm.addEventListener('submit', async (e) => {
+    // Form submission handler
+    const preferencesForm = document.getElementById('preferencesForm');
+    preferencesForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         hideFormError();
 
@@ -803,56 +904,39 @@ function setupEventListeners() {
         await generateStory(e);
     });
     
-    elements.generateAudioBtn.addEventListener('click', generateAudio);
-    elements.copyStoryBtn.addEventListener('click', copyStoryText);
-    elements.shareAudioBtn.addEventListener('click', shareAudio);
+    // Audio controls
+    document.getElementById('generateAudioBtn')?.addEventListener('click', generateAudio);
+    document.getElementById('copyStoryBtn')?.addEventListener('click', copyStoryText);
+    document.getElementById('shareAudioBtn')?.addEventListener('click', shareAudio);
     
-    // Add keyboard navigation for game cards
-    elements.gamesList.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            const card = e.target.closest('.game-card');
-            if (card) {
-                e.preventDefault();
-                selectGame(card.dataset.gameId, card);
-            }
-        }
-    });
-
-    // Add error reset on form changes
-    elements.preferencesForm.querySelectorAll('input, select').forEach(input => {
-        input.addEventListener('change', hideFormError);
-    });
-
-    // Add language selection handler
-    elements.languageSelect.addEventListener('change', (e) => {
+    // Voice settings
+    document.getElementById('languageSelect')?.addEventListener('change', (e) => {
         updateVoiceOptions(e.target.value);
     });
 
-    elements.previewVoiceBtn.addEventListener('click', previewVoice);
+    // Preview voice button
+    document.getElementById('previewVoiceBtn')?.addEventListener('click', previewVoice);
     
-    // Setup tabs and range inputs
-    setupTabs();
-    setupRangeInputs();
-
-    // Add modal close handlers
-    document.querySelector('.close-modal').addEventListener('click', hideGameStatsModal);
-    
-    document.getElementById('gameStatsModal').addEventListener('click', (e) => {
-        if (e.target.id === 'gameStatsModal') {
-            hideGameStatsModal();
-        }
+    // Tab switching
+    document.querySelectorAll('.tab-btn')?.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetTab = btn.dataset.tab;
+            
+            // Update active state of buttons
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Show/hide appropriate content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.toggle('hidden', !content.id.includes(targetTab));
+            });
+        });
     });
     
-    // Add continue to story button in modal
-    const continueBtn = document.createElement('button');
-    continueBtn.className = 'btn btn-primary continue-to-story';
-    continueBtn.innerHTML = '<i class="fas fa-pen"></i> Continue to Story Creation';
-    continueBtn.addEventListener('click', () => {
-        hideGameStatsModal();
-        showStoryPreferences();
+    // Load more games button
+    document.getElementById('loadMoreGames')?.addEventListener('click', () => {
+        loadMoreGames();
     });
-    
-    document.querySelector('.modal-body').appendChild(continueBtn);
 }
 
 // Loading overlay
@@ -1020,18 +1104,16 @@ function debounce(func, wait) {
     };
 }
 
-// Update showStoryPreferences to handle the transition smoothly
+// Update showStoryPreferences to use minimal delay
 function showStoryPreferences() {
-    // Get the story preferences section
     const preferencesSection = document.getElementById('storyPreferences');
-    
-    // Show the section
     preferencesSection.classList.remove('hidden');
     
-    // Scroll to the section smoothly
+    // Add minimal delay before scrolling
+    setTimeout(() => {
     preferencesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
     
-    // Reset any previous story
     updateStoryDisplay('', false);
 }
 
@@ -1048,3 +1130,25 @@ if (videoPlayerModal) {
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', init); 
+
+// Update load more button visibility
+function updateLoadMoreButton() {
+    const loadMoreBtn = document.getElementById('loadMoreGames');
+    if (loadMoreBtn) {
+        const hasMore = gameState.filteredGames.length > gameState.displayedGames;
+        loadMoreBtn.style.display = hasMore ? 'flex' : 'none';
+    }
+}
+
+// Handle load more games
+function loadMoreGames() {
+    gameState.displayedGames += 10; // Load 10 more games
+    filterAndRenderGames();
+    
+    // Scroll to show the newly loaded games
+    const slider = elements.gamesList;
+    slider.scrollTo({
+        left: slider.scrollWidth,
+        behavior: 'smooth'
+    });
+} 

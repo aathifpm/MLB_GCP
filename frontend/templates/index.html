@@ -19,69 +19,64 @@
                     <i class="fas fa-baseball-ball"></i>
                     <h1>MLB Storyteller</h1>
                 </div>
-                <div class="health-status" id="healthStatus" role="status" aria-live="polite">
-                    <span class="status-dot"></span>
-                    <span class="status-text">Checking system status...</span>
+                <div class="header-controls">
+                    <div class="search-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="gameSearch" class="search-input" placeholder="Search teams..." aria-label="Search games">
+                </div>
+                    <div class="header-filters">
+                        <div class="select-wrapper compact">
+                            <select id="seasonSelect" class="select-input" aria-label="Select Season">
+                                <option value="2024">2024</option>
+                                <option value="2023">2023</option>
+                            </select>
+                        </div>
+                        <div class="select-wrapper compact">
+                            <select id="gameTypeSelect" class="select-input" aria-label="Select Game Type">
+                                <option value="R">Regular</option>
+                                <option value="P">Playoffs</option>
+                                <option value="S">Spring</option>
+                            </select>
+                        </div>
+                        <div class="select-wrapper compact">
+                            <select id="statusFilter" class="select-input" aria-label="Filter Games">
+                                <option value="all">All Games</option>
+                                <option value="upcoming">Upcoming</option>
+                                <option value="live">Live</option>
+                                <option value="final">Final</option>
+                            </select>
+                        </div>
+                        <div class="select-wrapper compact">
+                            <select id="sortGames" class="select-input" aria-label="Sort Games">
+                                <option value="date-asc">Date ↑</option>
+                                <option value="date-desc">Date ↓</option>
+                                <option value="team">Team</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
         </header>
 
         <main class="main-content">
-            <section class="game-selection" aria-labelledby="gameSelectionTitle">
-                <div class="section-header">
-                    <h2 id="gameSelectionTitle"><i class="fas fa-calendar-alt"></i> Select a Game</h2>
-                </div>
+            <section class="game-selection">
                 <div class="games-section">
-                    <div class="filters">
-                        <div class="select-wrapper">
-                            <i class="fas fa-calendar-year"></i>
-                            <select id="seasonSelect" class="select-input" aria-label="Select Season">
-                                <option value="2024">2024 Season</option>
-                                <option value="2023">2023 Season</option>
-                            </select>
-                        </div>
-                        <div class="select-wrapper">
-                            <i class="fas fa-trophy"></i>
-                            <select id="gameTypeSelect" class="select-input" aria-label="Select Game Type">
-                                <option value="R">Regular Season</option>
-                                <option value="P">Playoffs</option>
-                                <option value="S">Spring Training</option>
-                            </select>
-                        </div>
-                        <div class="search-wrapper">
-                            <i class="fas fa-search"></i>
-                            <input type="text" id="gameSearch" class="search-input" placeholder="Search teams..." aria-label="Search games">
-                        </div>
-                    </div>
-
                     <div class="games-container">
-                        <div class="games-filters">
-                            <div class="filter-group">
-                                <label>Game Status</label>
-                                <div class="chip-group">
-                                    <button class="chip active" data-filter="all">All</button>
-                                    <button class="chip" data-filter="upcoming">Upcoming</button>
-                                    <button class="chip" data-filter="live">Live</button>
-                                    <button class="chip" data-filter="final">Final</button>
-                                </div>
-                            </div>
-                            <div class="filter-group">
-                                <label>Sort By</label>
-                                <div class="chip-group">
-                                    <button class="chip active" data-sort="date-asc">Date ↑</button>
-                                    <button class="chip" data-sort="date-desc">Date ↓</button>
-                                    <button class="chip" data-sort="team">Team</button>
-                                </div>
-                            </div>
-                        </div>
-
                         <div class="games-slider-container">
                             <button class="slider-nav prev" aria-label="Previous games">
                                 <i class="fas fa-chevron-left"></i>
                             </button>
-                            <div class="games-slider" id="gamesList" role="list" aria-label="Available Games"></div>
+                            <div class="games-slider" id="gamesList" role="list" aria-label="Available Games">
+                                <!-- Games will be inserted here -->
+                            </div>
                             <button class="slider-nav next" aria-label="Next games">
                                 <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                        <div class="load-more-container">
+                            <button id="loadMoreGames" class="btn btn-primary">
+                                <i class="fas fa-plus-circle"></i>
+                                <span class="btn-text">Load More Games</span>
                             </button>
                         </div>
                     </div>
