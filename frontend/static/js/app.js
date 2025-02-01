@@ -1,6 +1,6 @@
 // Constants
 const API_BASE_URL = window.location.hostname === 'aathifpm.github.io' 
-    ? 'https://mlb-storyteller-rpzozepf3q-uc.a.run.app/'  // Replace with your actual Cloud Run URL
+    ? 'https://mlb-storyteller-rpzozepf3q-uc.a.run.app'  // Remove trailing slash
     : 'http://localhost:8000';
 const ENDPOINTS = {
     health: '/health',
@@ -171,12 +171,20 @@ async function loadGames() {
         const season = elements.seasonSelect.value;
         const gameType = elements.gameTypeSelect.value;
         
-        const response = await fetch(`${API_BASE_URL}${ENDPOINTS.schedule}?season=${season}&game_type=${gameType}`);
-        const data = await response.json();
+        const response = await fetch(`${API_BASE_URL}${ENDPOINTS.schedule}?season=${season}&game_type=${gameType}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            mode: 'cors'
+        });
         
         if (!response.ok) {
             throw new Error(data.error || 'Failed to load games');
         }
+        
+        const data = await response.json();
         
         // Add minimal delay to ensure smooth transition
         await new Promise(resolve => setTimeout(resolve, 50));
@@ -958,7 +966,15 @@ window.addEventListener('beforeunload', () => {
 // Add these new functions
 async function loadVoices(languageCode) {
     try {
-        const response = await fetch(`${API_BASE_URL}${ENDPOINTS.voices}?language_code=${languageCode}`);
+        const response = await fetch(`${API_BASE_URL}${ENDPOINTS.voices}?language_code=${languageCode}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            mode: 'cors'
+        });
+        
         if (!response.ok) {
             throw new Error('Failed to load voices');
         }

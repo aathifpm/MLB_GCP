@@ -47,12 +47,12 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://127.0.0.1:8000",
         "https://aathifpm.github.io",  # GitHub Pages
-        "*"
     ],
-    allow_credentials=True,
+    allow_credentials=False,  # Set to False since we're not using credentials
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["Content-Disposition"]
+    expose_headers=["Content-Disposition"],
+    max_age=3600  # Cache preflight requests for 1 hour
 )
 
 # Get the absolute path to the frontend directory
