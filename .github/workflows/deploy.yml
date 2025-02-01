@@ -89,14 +89,7 @@ jobs:
             --range=10.8.0.0/28
         fi
 
-        # Create Datastore database if it doesn't exist
-        if ! gcloud datastore databases describe --project=${{ secrets.GOOGLE_CLOUD_PROJECT }} 2>/dev/null; then
-          gcloud datastore databases create \
-            --project=${{ secrets.GOOGLE_CLOUD_PROJECT }} \
-            --region=${{ secrets.GCP_REGION }}
-        fi
-
-        # Set Datastore connection string
+        # Set Datastore environment variables
         echo "DATASTORE_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" >> $GITHUB_ENV
         echo "DATASTORE_NAMESPACE=mlb_storyteller" >> $GITHUB_ENV
 
