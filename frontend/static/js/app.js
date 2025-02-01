@@ -90,7 +90,16 @@ const STATIC_ASSETS = {
 // Initialize the application
 async function init() {
     await loadGames();
-    await updateVoiceOptions('en-US');
+    try {
+        await updateVoiceOptions('en-US');
+    } catch (error) {
+        console.warn('Voice options not available:', error);
+        // Hide voice-related UI elements
+        const audioControls = document.querySelector('.audio-controls');
+        if (audioControls) {
+            audioControls.style.display = 'none';
+        }
+    }
     setupEventListeners();
     setupScrollHandlers();
     setupRangeInputs();
@@ -486,7 +495,9 @@ function updateStoryDisplay(text, shouldShow = true) {
 
 // Generate story with enhanced error handling and validation
 async function generateStory(event) {
-    event.preventDefault();
+    if (event) {
+        event.preventDefault();  // Prevent form submission
+    }
     
     if (isGeneratingStory) {
         showToast('Story generation in progress...', 'info');
@@ -551,12 +562,13 @@ async function generateStory(event) {
             body: JSON.stringify(requestData)
         });
         
-        const data = await response.json();
-        console.log('Received response:', data);
-        
         if (!response.ok) {
+            const data = await response.json();
             throw new Error(data.detail || data.message || 'Failed to generate story');
         }
+
+        const data = await response.json();
+        console.log('Received response:', data);
 
         // Process the response
         currentStoryText = typeof data === 'string' ? data : 
@@ -574,8 +586,8 @@ async function generateStory(event) {
         
         // Update the display with a minimal delay
         await new Promise(resolve => setTimeout(resolve, 50));
-            updateStoryDisplay(currentStoryText, true);
-            showToast('Story generated successfully', 'success');
+        updateStoryDisplay(currentStoryText, true);
+        showToast('Story generated successfully', 'success');
 
     } catch (error) {
         console.error('Failed to generate story:', error);
@@ -624,9 +636,10 @@ function initializePreferencesForm() {
         keyMomentsCheckbox.checked = true;
     }
     
-    // Add form submit handler
+    // Add form submit handler with explicit preventDefault
     form.addEventListener('submit', async (e) => {
-        e.preventDefault();
+        e.preventDefault();  // Prevent form submission
+        e.stopPropagation(); // Stop event propagation
         hideFormError();
 
         // Get and validate focus areas
@@ -650,21 +663,8 @@ function initializePreferencesForm() {
             return;
         }
 
-        // Get additional options
-        const includePlayerStats = playerStatsCheckbox?.checked || false;
-        const highlightKeyMoments = keyMomentsCheckbox?.checked || false;
-
-        // Create preferences object
-        const preferences = {
-            style: style,
-            focus: focusAreas,
-            length: length,
-            include_player_stats: includePlayerStats,
-            highlight_key_moments: highlightKeyMoments
-        };
-
-        console.log('Form preferences:', preferences);
         await generateStory(e);
+        return false; // Prevent form submission
     });
     
     // Add change handlers to hide error message when user makes changes
@@ -975,8 +975,14 @@ async function loadVoices(languageCode) {
             mode: 'cors'
         });
         
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Server response:', errorText);
+            throw new Error(`Failed to load voices: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        return data.voices || [];
     } catch (error) {
         console.error('Error loading voices:', error);
         throw error;
@@ -985,111 +991,119 @@ async function loadVoices(languageCode) {
 
 async function updateVoiceOptions(languageCode) {
     const voiceSelect = elements.voiceSelect;
+    if (!voiceSelect) return;
+    
     voiceSelect.innerHTML = '<option value="">Loading voices...</option>';
     
-    const voices = await loadVoices(languageCode);
-    voiceSelect.innerHTML = '';
-    
-    if (voices.length === 0) {
-        voiceSelect.innerHTML = '<option value="">No voices available</option>';
-        return;
-    }
-
-    // Sort voices by type (Neural2 > Studio > WaveNet > Standard)
-    const sortedVoices = voices.sort((a, b) => {
-        const getVoiceTypeScore = (name) => {
-            if (name.includes('Neural2')) return 4;
-            if (name.includes('Studio')) return 3;
-            if (name.includes('Wavenet')) return 2;
-            return 1; // Standard
-        };
-        return getVoiceTypeScore(b.name) - getVoiceTypeScore(a.name);
-    });
-
-    // Group voices by type
-    const voiceGroups = {
-        neural2: [],
-        studio: [],
-        wavenet: [],
-        standard: []
-    };
-
-    sortedVoices.forEach(voice => {
-        const name = voice.name;
-        if (name.includes('Neural2')) {
-            voiceGroups.neural2.push(voice);
-        } else if (name.includes('Studio')) {
-            voiceGroups.studio.push(voice);
-        } else if (name.includes('Wavenet')) {
-            voiceGroups.wavenet.push(voice);
-        } else {
-            voiceGroups.standard.push(voice);
-        }
-    });
-
-    // Function to format voice display name
-    const formatVoiceName = (voice, type) => {
-        const gender = voice.gender.toLowerCase();
-        const genderLabel = gender === 'female' ? '👩 Female' : '👨 Male';
-        const languageCode = voice.language_codes[0];
-        let accent = '';
+    try {
+        const voices = await loadVoices(languageCode);
+        voiceSelect.innerHTML = '';
         
-        // Add accent/region information
-        if (languageCode === 'en-US') accent = 'American';
-        else if (languageCode === 'en-GB') accent = 'British';
-        else if (languageCode === 'en-AU') accent = 'Australian';
-        else if (languageCode === 'es-ES') accent = 'Spain';
-        else if (languageCode === 'es-US') accent = 'Latin American';
-        else if (languageCode === 'ja-JP') accent = 'Japanese';
-
-        let quality = '';
-        switch (type) {
-            case 'neural2':
-                quality = '🎯 Neural2 (Best Quality)';
-                break;
-            case 'studio':
-                quality = '🎨 Studio (Professional)';
-                break;
-            case 'wavenet':
-                quality = '🌊 WaveNet (Enhanced)';
-                break;
-            default:
-                quality = '📱 Standard';
+        if (!voices || voices.length === 0) {
+            voiceSelect.innerHTML = '<option value="">No voices available</option>';
+            return;
         }
 
-        return `${genderLabel} - ${accent} ${quality}`;
-    };
-
-    // Add optgroups for each voice type
-    const addVoiceGroup = (voices, type, label) => {
-        if (voices.length === 0) return;
-        
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = label;
-        
-        voices.forEach(voice => {
-            const option = document.createElement('option');
-            option.value = voice.name;
-            option.textContent = formatVoiceName(voice, type);
-            optgroup.appendChild(option);
+        // Sort voices by type (Neural2 > Studio > WaveNet > Standard)
+        const sortedVoices = voices.sort((a, b) => {
+            const getVoiceTypeScore = (name) => {
+                if (name.includes('Neural2')) return 4;
+                if (name.includes('Studio')) return 3;
+                if (name.includes('Wavenet')) return 2;
+                return 1; // Standard
+            };
+            return getVoiceTypeScore(b.name) - getVoiceTypeScore(a.name);
         });
-        
-        voiceSelect.appendChild(optgroup);
-    };
 
-    // Add voices in order of quality
-    addVoiceGroup(voiceGroups.neural2, 'neural2', '🌟 Premium Neural Voices');
-    addVoiceGroup(voiceGroups.studio, 'studio', '🎭 Studio Voices');
-    addVoiceGroup(voiceGroups.wavenet, 'wavenet', '🎵 Enhanced WaveNet Voices');
-    addVoiceGroup(voiceGroups.standard, 'standard', '📱 Standard Voices');
+        // Group voices by type
+        const voiceGroups = {
+            neural2: [],
+            studio: [],
+            wavenet: [],
+            standard: []
+        };
 
-    // Select the first Neural2 or Studio voice by default
-    if (voiceGroups.neural2.length > 0) {
-        voiceSelect.value = voiceGroups.neural2[0].name;
-    } else if (voiceGroups.studio.length > 0) {
-        voiceSelect.value = voiceGroups.studio[0].name;
-    } else if (voiceSelect.options.length > 0) {
-        voiceSelect.selectedIndex = 0;
+        sortedVoices.forEach(voice => {
+            const name = voice.name;
+            if (name.includes('Neural2')) {
+                voiceGroups.neural2.push(voice);
+            } else if (name.includes('Studio')) {
+                voiceGroups.studio.push(voice);
+            } else if (name.includes('Wavenet')) {
+                voiceGroups.wavenet.push(voice);
+            } else {
+                voiceGroups.standard.push(voice);
+            }
+        });
+
+        // Function to format voice display name
+        const formatVoiceName = (voice, type) => {
+            const gender = voice.gender.toLowerCase();
+            const genderLabel = gender === 'female' ? '👩 Female' : '👨 Male';
+            const languageCode = voice.language_codes[0];
+            let accent = '';
+            
+            // Add accent/region information
+            if (languageCode === 'en-US') accent = 'American';
+            else if (languageCode === 'en-GB') accent = 'British';
+            else if (languageCode === 'en-AU') accent = 'Australian';
+            else if (languageCode === 'es-ES') accent = 'Spain';
+            else if (languageCode === 'es-US') accent = 'Latin American';
+            else if (languageCode === 'ja-JP') accent = 'Japanese';
+
+            let quality = '';
+            switch (type) {
+                case 'neural2':
+                    quality = '🎯 Neural2 (Best Quality)';
+                    break;
+                case 'studio':
+                    quality = '🎨 Studio (Professional)';
+                    break;
+                case 'wavenet':
+                    quality = '🌊 WaveNet (Enhanced)';
+                    break;
+                default:
+                    quality = '📱 Standard';
+            }
+
+            return `${genderLabel} - ${accent} ${quality}`;
+        };
+
+        // Add optgroups for each voice type
+        const addVoiceGroup = (voices, type, label) => {
+            if (voices.length === 0) return;
+            
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = label;
+            
+            voices.forEach(voice => {
+                const option = document.createElement('option');
+                option.value = voice.name;
+                option.textContent = formatVoiceName(voice, type);
+                optgroup.appendChild(option);
+            });
+            
+            voiceSelect.appendChild(optgroup);
+        };
+
+        // Add voices in order of quality
+        addVoiceGroup(voiceGroups.neural2, 'neural2', '🌟 Premium Neural Voices');
+        addVoiceGroup(voiceGroups.studio, 'studio', '🎭 Studio Voices');
+        addVoiceGroup(voiceGroups.wavenet, 'wavenet', '🎵 Enhanced WaveNet Voices');
+        addVoiceGroup(voiceGroups.standard, 'standard', '📱 Standard Voices');
+
+        // Select the first Neural2 or Studio voice by default
+        if (voiceGroups.neural2.length > 0) {
+            voiceSelect.value = voiceGroups.neural2[0].name;
+        } else if (voiceGroups.studio.length > 0) {
+            voiceSelect.value = voiceGroups.studio[0].name;
+        } else if (voiceSelect.options.length > 0) {
+            voiceSelect.selectedIndex = 0;
+        }
+    } catch (error) {
+        console.error('Failed to update voice options:', error);
+        voiceSelect.innerHTML = '<option value="">Voice service unavailable</option>';
+        throw error;
     }
 }
 

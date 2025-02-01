@@ -92,32 +92,6 @@ async def serve_index():
         raise HTTPException(status_code=404, detail=f"Index file not found at {index_path}")
     return FileResponse(index_path)
 
-# Health check endpoint
-@app.get("/health")
-async def health_check():
-    """Check the health of the application and its dependencies."""
-    try:
-        # Check Redis connection
-        redis_service = RedisService()
-        redis_health = await redis_service.health_check()
-
-        # Check MLB API connection
-        mlb_service = MLBDataFetcher()
-        schedule = await mlb_service.get_schedule(2024, "R")
-        mlb_health = bool(schedule)
-
-        return {
-            "status": "healthy",
-            "dependencies": {
-                "redis": redis_health,
-                "mlb_api": mlb_health
-            }
-        }
-    except Exception as e:
-        return {
-            "status": "unhealthy",
-            "error": str(e)
-        }
 
 # Game data endpoints
 @app.get("/games/{game_id}")
