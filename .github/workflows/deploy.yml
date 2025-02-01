@@ -53,21 +53,58 @@ jobs:
       run: |
         gcloud auth configure-docker gcr.io --quiet
 
-    - name: Build and Push MongoDB Container
+    - name: Setup Cloud Infrastructure
+      if: github.ref == 'refs/heads/main'
       run: |
-        docker build -t gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/mongodb:latest -f docker/mongodb.Dockerfile .
-        docker push gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/mongodb:latest
+        # Enable required APIs
+        gcloud services enable \
+          redis.googleapis.com \
+          datastore.googleapis.com \
+          vpcaccess.googleapis.com \
+          servicenetworking.googleapis.com
 
-    - name: Build and Push Redis Container
-      run: |
-        docker build -t gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/redis:latest -f docker/redis.Dockerfile .
-        docker push gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/redis:latest
+        # Create VPC network if it doesn't exist
+        if ! gcloud compute networks describe mlb-network 2>/dev/null; then
+          gcloud compute networks create mlb-network --subnet-mode=auto
+        fi
+
+        # Create Cloud Memorystore (Redis) instance if it doesn't exist
+        if ! gcloud redis instances describe mlb-redis --region=${{ secrets.GCP_REGION }} 2>/dev/null; then
+          gcloud redis instances create mlb-redis \
+            --size=1 \
+            --region=${{ secrets.GCP_REGION }} \
+            --network=mlb-network \
+            --redis-version=redis_6_x
+        fi
+
+        # Get Redis instance IP
+        REDIS_IP=$(gcloud redis instances describe mlb-redis --region=${{ secrets.GCP_REGION }} --format='get(host)')
+        echo "REDIS_IP=$REDIS_IP" >> $GITHUB_ENV
+
+        # Create Serverless VPC connector if it doesn't exist
+        if ! gcloud compute networks vpc-access connectors describe mlb-connector --region=${{ secrets.GCP_REGION }} 2>/dev/null; then
+          gcloud compute networks vpc-access connectors create mlb-connector \
+            --network=mlb-network \
+            --region=${{ secrets.GCP_REGION }} \
+            --range=10.8.0.0/28
+        fi
+
+        # Create Datastore database if it doesn't exist
+        if ! gcloud datastore databases describe --project=${{ secrets.GOOGLE_CLOUD_PROJECT }} 2>/dev/null; then
+          gcloud datastore databases create \
+            --project=${{ secrets.GOOGLE_CLOUD_PROJECT }} \
+            --region=${{ secrets.GCP_REGION }}
+        fi
+
+        # Set Datastore connection string
+        echo "DATASTORE_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" >> $GITHUB_ENV
+        echo "DATASTORE_NAMESPACE=mlb_storyteller" >> $GITHUB_ENV
 
     - name: Create env file
       run: |
-        echo "MONGODB_URI=mongodb://mongodb-service:27017" >> .env
-        echo "MONGODB_DB_NAME=mlb_storyteller" >> .env
-        echo "REDIS_URL=redis://redis-service:6379" >> .env
+        echo "DATASTORE_PROJECT=${DATASTORE_PROJECT}" >> .env
+        echo "DATASTORE_NAMESPACE=${DATASTORE_NAMESPACE}" >> .env
+        echo "REDIS_URL=redis://${REDIS_IP}:6379" >> .env
         echo "CACHE_ENABLED=True" >> .env
         echo "CACHE_TTL=3600" >> .env
         echo "GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" >> .env
@@ -96,33 +133,16 @@ jobs:
       uses: actions/deploy-pages@v4
       if: github.ref == 'refs/heads/main'
 
-    - name: Deploy Services to GCP
-      if: github.ref == 'refs/heads/main'
-      run: |
-        # Deploy MongoDB
-        gcloud run deploy mongodb-service \
-          --image gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/mongodb:latest \
-          --platform managed \
-          --region ${{ secrets.GCP_REGION }} \
-          --allow-unauthenticated \
-          --port 27017
-
-        # Deploy Redis
-        gcloud run deploy redis-service \
-          --image gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/redis:latest \
-          --platform managed \
-          --region ${{ secrets.GCP_REGION }} \
-          --allow-unauthenticated \
-          --port 6379
-
     - name: Deploy Application to Cloud Run
       if: github.ref == 'refs/heads/main'
       uses: google-github-actions/deploy-cloudrun@v2
       with:
         service: mlb-storyteller
         region: ${{ secrets.GCP_REGION }}
+        vpc_connector: mlb-connector
         env_vars: |
-          MONGODB_URI=mongodb://mongodb-service:27017
-          REDIS_URL=redis://redis-service:6379
+          DATASTORE_PROJECT=${DATASTORE_PROJECT}
+          DATASTORE_NAMESPACE=${DATASTORE_NAMESPACE}
+          REDIS_URL=redis://${REDIS_IP}:6379
           GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}
           GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} 
