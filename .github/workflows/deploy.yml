@@ -36,24 +36,20 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Setup GCP Service Account
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+        service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+
+    - name: Configure Docker
       run: |
-        # Write the service account key to a file
-        echo '${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}' > service-account.json
-        
-        # Install gcloud if not present
-        if ! command -v gcloud &> /dev/null; then
-          curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-458.0.1-linux-x86_64.tar.gz
-          tar -xf google-cloud-cli-458.0.1-linux-x86_64.tar.gz
-          ./google-cloud-sdk/install.sh --quiet
-          echo "$HOME/google-cloud-sdk/bin" >> $GITHUB_PATH
-        fi
-        
-        # Authenticate with service account
-        gcloud auth activate-service-account --key-file=service-account.json
-        gcloud config set project ${{ secrets.GOOGLE_CLOUD_PROJECT }}
-        
-        # Configure Docker authentication
         gcloud auth configure-docker gcr.io --quiet
 
     - name: Build and Push MongoDB Container
@@ -75,7 +71,6 @@ jobs:
         echo "CACHE_TTL=3600" >> .env
         echo "GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" >> .env
         echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
-        echo "GOOGLE_APPLICATION_CREDENTIALS=./service-account.json" >> .env
 
     - name: Run tests
       run: |
@@ -125,7 +120,6 @@ jobs:
       with:
         service: mlb-storyteller
         region: ${{ secrets.GCP_REGION }}
-        credentials: ${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}
         env_vars: |
           MONGODB_URI=mongodb://mongodb-service:27017
           REDIS_URL=redis://redis-service:6379

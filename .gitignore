@@ -2,9 +2,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+.json
 # C extensions
 *.so
+mlb-storyteller-63d08b8e0178.json
 
 # Distribution / packaging
 .Python
