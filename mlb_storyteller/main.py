@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from mlb_storyteller.api.routes import audio
 from mlb_storyteller.data.mlb_data_fetcher import MLBDataFetcher
@@ -38,20 +39,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS with more permissive settings
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://aathifpm.github.io",  # GitHub Pages domain
-        "http://localhost:8080",  # Local development
-        "http://127.0.0.1:8080",  # Local development alternative
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=3600
-)
+@app.middleware("http")
+async def add_cors_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
 
 # Get the absolute path to the frontend directory
 frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
@@ -62,7 +56,11 @@ app.mount("/static", StaticFiles(directory=os.path.join(frontend_dir, "static"))
 # Add OPTIONS endpoint handlers for CORS preflight requests
 @app.options("/{path:path}")
 async def options_handler(path: str):
-    return {"detail": "OK"}
+    response = JSONResponse(content={"detail": "OK"})
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
 
 # Include routers
 app.include_router(audio.router, prefix="/api")
