@@ -134,17 +134,15 @@ jobs:
 
     - name: Deploy Application to Cloud Run
       if: github.ref == 'refs/heads/main'
-      uses: google-github-actions/deploy-cloudrun@v2
-      with:
-        service: mlb-storyteller
-        region: ${{ secrets.GCP_REGION }}
-        image: gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/mlb-storyteller:${{ github.sha }}
-        flags: |
-          --vpc-connector=mlb-connector
-          --allow-unauthenticated
-        env_vars: |
-          DATASTORE_PROJECT=${DATASTORE_PROJECT}
-          DATASTORE_NAMESPACE=${DATASTORE_NAMESPACE}
-          REDIS_URL=redis://${REDIS_IP}:6379
-          GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}
-          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} 
+      run: |
+        gcloud run deploy mlb-storyteller \
+          --image gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/mlb-storyteller:${{ github.sha }} \
+          --platform managed \
+          --region ${{ secrets.GCP_REGION }} \
+          --vpc-connector mlb-connector \
+          --allow-unauthenticated \
+          --set-env-vars "DATASTORE_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" \
+          --set-env-vars "DATASTORE_NAMESPACE=mlb_storyteller" \
+          --set-env-vars "REDIS_URL=redis://${REDIS_IP}:6379" \
+          --set-env-vars "GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" \
+          --set-env-vars "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" 
