@@ -175,13 +175,17 @@ async function loadGames() {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Origin': window.location.origin
             },
-            mode: 'cors'
+            mode: 'cors',
+            credentials: 'omit'
         });
         
         if (!response.ok) {
-            throw new Error(data.error || 'Failed to load games');
+            const errorText = await response.text();
+            console.error('Server response:', errorText);
+            throw new Error(`Failed to load games: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
@@ -193,7 +197,7 @@ async function loadGames() {
         showToast('Games loaded successfully', 'success');
     } catch (error) {
         console.error('Failed to load games:', error);
-        elements.gamesList.innerHTML = '<p class="error">Failed to load games. Please try again later.</p>';
+        elements.gamesList.innerHTML = `<p class="error">Failed to load games: ${error.message}</p>`;
         showToast(error.message, 'error');
     }
     hideLoading();
@@ -970,19 +974,24 @@ async function loadVoices(languageCode) {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Origin': window.location.origin
             },
-            mode: 'cors'
+            mode: 'cors',
+            credentials: 'omit'
         });
         
         if (!response.ok) {
-            throw new Error('Failed to load voices');
+            const errorText = await response.text();
+            console.error('Server response:', errorText);
+            throw new Error(`Failed to load voices: ${response.status} ${response.statusText}`);
         }
+        
         const data = await response.json();
         return data.voices;
     } catch (error) {
         console.error('Error loading voices:', error);
-        showToast('Failed to load voices', 'error');
+        showToast(`Failed to load voices: ${error.message}`, 'error');
         return [];
     }
 }

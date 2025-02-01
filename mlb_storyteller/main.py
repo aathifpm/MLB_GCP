@@ -38,22 +38,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS
+# Configure CORS with more permissive settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # React development server
-        "http://localhost:8000",  # FastAPI server
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8000",
-        "https://aathifpm.github.io",  # GitHub Pages
-        "https://mlb-storyteller-553323728617.us-central1.run.app"  # Cloud Run URL
-    ],
-    allow_credentials=False,  # Set to False since we're not using credentials
+    allow_origins=["*"],  # Allow all origins temporarily
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["Content-Disposition"],
-    max_age=3600  # Cache preflight requests for 1 hour
+    expose_headers=["*"],
+    max_age=3600
 )
 
 # Get the absolute path to the frontend directory
@@ -61,6 +54,11 @@ frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fronten
 
 # Mount static files
 app.mount("/static", StaticFiles(directory=os.path.join(frontend_dir, "static")), name="static")
+
+# Add OPTIONS endpoint handlers for CORS preflight requests
+@app.options("/{path:path}")
+async def options_handler(path: str):
+    return {"detail": "OK"}
 
 # Include routers
 app.include_router(audio.router, prefix="/api")

@@ -27,7 +27,11 @@ Docker setup :
 ```
 docker-compose up -d
 ```
+run the following command to start the server:
+```
+python -m uvicorn mlb_storyteller.main:app --reload --host 0.0.0.0 --port 8000
 
+```
 ## Development Roadmap
 1. Data Integration Layer
    - MLB dataset integration
