@@ -23,6 +23,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v0
       with:
@@ -61,7 +64,13 @@ jobs:
 
     - name: Run tests
       run: |
-        docker-compose -f docker-compose.test.yml up --exit-code-from tests
+        # Install Docker Compose v2
+        DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+        mkdir -p $DOCKER_CONFIG/cli-plugins
+        curl -SL https://github.com/docker/compose/releases/download/v2.23.3/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
+        chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+        # Run tests using Docker Compose v2
+        docker compose -f docker-compose.test.yml up --exit-code-from tests
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
