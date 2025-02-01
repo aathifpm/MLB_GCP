@@ -41,8 +41,12 @@ app = FastAPI(
 # Configure CORS with more permissive settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins temporarily
-    allow_credentials=False,
+    allow_origins=[
+        "https://aathifpm.github.io",  # GitHub Pages domain
+        "http://localhost:8080",  # Local development
+        "http://127.0.0.1:8080",  # Local development alternative
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
