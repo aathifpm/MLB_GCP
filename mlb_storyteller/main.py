@@ -54,14 +54,24 @@ app.add_middleware(
     expose_headers=["Content-Disposition"]
 )
 
-# Mount static files (for production build)
-static_dir = os.path.join(os.path.dirname(__file__), "frontend", "build")
-if os.path.exists(static_dir):
-    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+# Get the absolute path to the frontend directory
+frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+
+# Mount static files
+app.mount("/static", StaticFiles(directory=os.path.join(frontend_dir, "static")), name="static")
 
 # Include routers
 app.include_router(audio.router, prefix="/api")
 app.include_router(game_stats_router)
+
+@app.get("/")
+async def serve_index():
+    """Serve the index.html file."""
+    from fastapi.responses import FileResponse
+    index_path = os.path.join(frontend_dir, "templates", "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    raise HTTPException(status_code=404, detail="Index file not found")
 
 # Health check endpoint
 @app.get("/health")
