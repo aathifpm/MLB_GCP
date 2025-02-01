@@ -53,6 +53,11 @@ jobs:
       run: |
         gcloud auth configure-docker gcr.io --quiet
 
+    - name: Build and Push Application Container
+      run: |
+        docker build -t gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/mlb-storyteller:${{ github.sha }} .
+        docker push gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/mlb-storyteller:${{ github.sha }}
+
     - name: Setup Cloud Infrastructure
       if: github.ref == 'refs/heads/main'
       run: |
@@ -61,7 +66,8 @@ jobs:
           redis.googleapis.com \
           datastore.googleapis.com \
           vpcaccess.googleapis.com \
-          servicenetworking.googleapis.com
+          servicenetworking.googleapis.com \
+          run.googleapis.com
 
         # Create VPC network if it doesn't exist
         if ! gcloud compute networks describe mlb-network 2>/dev/null; then
@@ -132,7 +138,10 @@ jobs:
       with:
         service: mlb-storyteller
         region: ${{ secrets.GCP_REGION }}
-        vpc_connector: mlb-connector
+        image: gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/mlb-storyteller:${{ github.sha }}
+        flags: |
+          --vpc-connector=mlb-connector
+          --allow-unauthenticated
         env_vars: |
           DATASTORE_PROJECT=${DATASTORE_PROJECT}
           DATASTORE_NAMESPACE=${DATASTORE_NAMESPACE}
