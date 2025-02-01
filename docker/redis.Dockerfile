@@ -1,10 +1,10 @@
 FROM redis:latest
 
-# Create directory for data persistence
-RUN mkdir -p /data
+# Create directories for data and logs
+RUN mkdir -p /data /var/log/redis
 
 # Set permissions
-RUN chown -R redis:redis /data
+RUN chown -R redis:redis /data /var/log/redis
 
 # Copy custom Redis configuration
 COPY docker/redis.conf /usr/local/etc/redis/redis.conf

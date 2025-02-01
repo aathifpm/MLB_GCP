@@ -1,10 +1,10 @@
 FROM mongo:latest
 
-# Create directory for data persistence
-RUN mkdir -p /data/db
+# Create directories for data and logs
+RUN mkdir -p /data/db /var/log/mongodb
 
 # Set permissions
-RUN chown -R mongodb:mongodb /data/db
+RUN chown -R mongodb:mongodb /data/db /var/log/mongodb
 
 # Expose the default MongoDB port
 EXPOSE 27017
