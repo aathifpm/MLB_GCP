@@ -1,10 +1,13 @@
 from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict
 from ..dependencies import get_text_to_speech_service
 import io
 from google.api_core import exceptions
+import os
+import json
+from google.cloud import texttospeech
 
 router = APIRouter(
     prefix="/audio",
@@ -130,7 +133,7 @@ async def list_voices(language_code: str = "en-US"):
             if not voices:
                 return VoiceListResponse(
                     voices=[],
-                    message=f"No voices found for language code: {language_code}"
+                    message="No voices available for selected language"
                 )
                 
             voice_list = [
