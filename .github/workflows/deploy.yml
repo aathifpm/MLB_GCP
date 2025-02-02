@@ -155,4 +155,7 @@ jobs:
           --set-env-vars "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
           --add-cloudsql-instances=${{ secrets.GOOGLE_CLOUD_PROJECT }}:${{ secrets.GCP_REGION }}:mlb-db \
           --set-env-vars "CORS_ORIGINS=https://aathifpm.github.io" \
-          --set-env-vars "CORS_ALLOW_CREDENTIALS=true" 
+          --set-env-vars "CORS_ALLOW_CREDENTIALS=false" \
+          --set-env-vars "CORS_ALLOW_METHODS=GET,POST,OPTIONS" \
+          --set-env-vars "CORS_ALLOW_HEADERS=Content-Type,Authorization,Accept" \
+          --set-env-vars "CORS_MAX_AGE=3600" 

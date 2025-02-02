@@ -90,16 +90,21 @@ const STATIC_ASSETS = {
 // Initialize the application
 async function init() {
     await loadGames();
-    try {
-        await updateVoiceOptions('en-US');
-    } catch (error) {
-        console.warn('Voice options not available:', error);
-        // Hide voice-related UI elements
-        const audioControls = document.querySelector('.audio-controls');
-        if (audioControls) {
-            audioControls.style.display = 'none';
+    
+    // Initialize voice options
+    const audioControls = document.querySelector('.audio-controls');
+    if (audioControls) {
+        audioControls.style.display = 'none'; // Hide initially
+        try {
+            await updateVoiceOptions('en-US');
+            audioControls.style.display = ''; // Show if successful
+        } catch (error) {
+            console.warn('Voice options not available:', error);
+            // Keep audio controls hidden
+            showToast('Voice narration is currently unavailable', 'warning');
         }
     }
+    
     setupEventListeners();
     setupScrollHandlers();
     setupRangeInputs();
@@ -970,22 +975,34 @@ async function loadVoices(languageCode) {
         const response = await fetch(`${API_BASE_URL}${ENDPOINTS.voices}?language_code=${languageCode}`, {
             method: 'GET',
             headers: {
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'Origin': 'https://aathifpm.github.io'
             },
-            mode: 'cors',
-            credentials: 'include'
+            mode: 'cors'
         });
         
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Server response:', errorText);
+            console.error('Response status:', response.status);
+            console.error('Response headers:', Object.fromEntries([...response.headers]));
             throw new Error(`Failed to load voices: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
+        if (!data || !data.voices) {
+            console.error('Invalid response data:', data);
+            throw new Error('Invalid response format from server');
+        }
         return data.voices || [];
     } catch (error) {
         console.error('Error loading voices:', error);
+        // Hide voice-related UI elements on error
+        const audioControls = document.querySelector('.audio-controls');
+        if (audioControls) {
+            audioControls.style.display = 'none';
+        }
         throw error;
     }
 }
