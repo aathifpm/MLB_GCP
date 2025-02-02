@@ -996,7 +996,6 @@ async function updateVoiceOptions(languageCode) {
     voiceSelect.innerHTML = '<option value="">Loading voices...</option>';
     
     try {
-        // Fetch voices from backend instead of direct API call
         const response = await fetch(`${API_BASE_URL}${ENDPOINTS.voices}?language_code=${languageCode}`);
         
         if (!response.ok) {
@@ -1005,9 +1004,6 @@ async function updateVoiceOptions(languageCode) {
         
         const data = await response.json();
         const voices = data.voices || [];
-        
-        // Rest of the voice selection logic remains the same
-        voiceSelect.innerHTML = '';
         
         if (voices.length === 0) {
             voiceSelect.innerHTML = '<option value="">No voices available</option>';
@@ -1112,6 +1108,10 @@ async function updateVoiceOptions(languageCode) {
     } catch (error) {
         console.error('Failed to update voice options:', error);
         voiceSelect.innerHTML = '<option value="">Voice service unavailable</option>';
+        
+        // Show error message to user
+        showToast('Unable to load voices. Please try again later.', 'error');
+        
         // Hide voice-related UI elements
         const audioControls = document.querySelector('.audio-controls');
         if (audioControls) {

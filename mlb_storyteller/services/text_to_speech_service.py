@@ -149,37 +149,29 @@ class TextToSpeechService:
             raise
 
     async def get_available_voices(self, language_code: str = "en-US") -> List[Dict]:
-        """
-        Get a list of available voices for the specified language.
-        
-        Args:
-            language_code: The language code to filter voices by
-            
-        Returns:
-            list: List of available voice names and properties
-        """
+        """Get available voices filtered by language code."""
         try:
-            # Run the API call in a thread pool
-            voices = await asyncio.to_thread(
-                self.client.list_voices,
-                language_code=language_code
-            )
+            # List voices from Google Cloud TTS
+            response = self.client.list_voices(language_code=language_code)
             
-            if not voices or not voices.voices:
+            if not response.voices:
                 return []
-
-            return [
-                {
-                    'name': voice.name,
-                    'gender': texttospeech.SsmlVoiceGender(voice.ssml_gender).name,
-                    'language_codes': voice.language_codes,
-                    'natural_sample_rate_hertz': voice.natural_sample_rate_hertz
-                }
-                for voice in voices.voices
-            ]
+            
+            # Format voices for API response
+            voices = []
+            for voice in response.voices:
+                voices.append({
+                    "name": voice.name,
+                    "gender": texttospeech.SsmlVoiceGender(voice.ssml_gender).name,
+                    "language_codes": list(voice.language_codes),
+                    "natural_sample_rate_hertz": voice.natural_sample_rate_hertz
+                })
+            
+            return voices
+            
         except Exception as e:
             print(f"Error listing voices: {str(e)}")
-            raise
+            raise Exception(f"Failed to list voices: {str(e)}")
 
     @staticmethod
     def chunk_text(text: str, max_chars: int = 5000) -> List[str]:

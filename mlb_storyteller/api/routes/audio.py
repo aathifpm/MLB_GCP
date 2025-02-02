@@ -125,24 +125,41 @@ async def list_voices(language_code: str = "en-US"):
         if not tts_service:
             raise HTTPException(status_code=500, detail="Text-to-speech service not available")
 
-        voices = await tts_service.get_available_voices(language_code)
-        if not voices:
-            return VoiceListResponse(
-                voices=[],
-                message=f"No voices found for language code: {language_code}"
+        try:
+            voices = await tts_service.get_available_voices(language_code)
+            if not voices:
+                return VoiceListResponse(
+                    voices=[],
+                    message=f"No voices found for language code: {language_code}"
+                )
+                
+            voice_list = [
+                Voice(
+                    name=voice["name"],
+                    gender=voice["gender"],
+                    language_codes=voice["language_codes"],
+                    natural_sample_rate_hertz=voice["natural_sample_rate_hertz"]
+                )
+                for voice in voices
+            ]
+            
+            return VoiceListResponse(voices=voice_list)
+            
+        except exceptions.PermissionDenied as e:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Permission denied: {str(e)}"
             )
-
-        # Convert the voice objects to Pydantic models
-        voice_list = [
-            Voice(
-                name=voice["name"],
-                gender=voice["gender"],
-                language_codes=voice["language_codes"],
-                natural_sample_rate_hertz=voice["natural_sample_rate_hertz"]
+        except exceptions.Unauthenticated as e:
+            raise HTTPException(
+                status_code=401,
+                detail=f"Authentication failed: {str(e)}"
             )
-            for voice in voices
-        ]
-
-        return VoiceListResponse(voices=voice_list)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error listing voices: {str(e)}"
+            )
+            
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error listing voices: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") 
