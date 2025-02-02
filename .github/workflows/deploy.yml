@@ -107,6 +107,7 @@ jobs:
         echo "CACHE_ENABLED=True" >> .env
         echo "CACHE_TTL=3600" >> .env
         echo "GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" >> .env
+        echo "GOOGLE_APPLICATION_CREDENTIALS=${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}" >> .env
         echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
 
     - name: Run tests
@@ -154,8 +155,5 @@ jobs:
           --set-env-vars "GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" \
           --set-env-vars "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
           --add-cloudsql-instances=${{ secrets.GOOGLE_CLOUD_PROJECT }}:${{ secrets.GCP_REGION }}:mlb-db \
-          --set-env-vars "CORS_ORIGINS=https://aathifpm.github.io" \
-          --set-env-vars "CORS_ALLOW_CREDENTIALS=false" \
-          --set-env-vars "CORS_ALLOW_METHODS=GET,POST,OPTIONS" \
-          --set-env-vars "CORS_ALLOW_HEADERS=Content-Type,Authorization,Accept" \
-          --set-env-vars "CORS_MAX_AGE=3600" 
+          --set-env-vars "CORS_ORIGINS=*" \
+          --set-env-vars "CORS_ALLOW_CREDENTIALS=false" 

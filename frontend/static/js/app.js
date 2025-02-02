@@ -90,21 +90,16 @@ const STATIC_ASSETS = {
 // Initialize the application
 async function init() {
     await loadGames();
-    
-    // Initialize voice options
-    const audioControls = document.querySelector('.audio-controls');
-    if (audioControls) {
-        audioControls.style.display = 'none'; // Hide initially
-        try {
-            await updateVoiceOptions('en-US');
-            audioControls.style.display = ''; // Show if successful
-        } catch (error) {
-            console.warn('Voice options not available:', error);
-            // Keep audio controls hidden
-            showToast('Voice narration is currently unavailable', 'warning');
+    try {
+        await updateVoiceOptions('en-US');
+    } catch (error) {
+        console.warn('Voice options not available:', error);
+        // Hide voice-related UI elements
+        const audioControls = document.querySelector('.audio-controls');
+        if (audioControls) {
+            audioControls.style.display = 'none';
         }
     }
-    
     setupEventListeners();
     setupScrollHandlers();
     setupRangeInputs();
@@ -975,9 +970,7 @@ async function loadVoices(languageCode) {
         const response = await fetch(`${API_BASE_URL}${ENDPOINTS.voices}?language_code=${languageCode}`, {
             method: 'GET',
             headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'Origin': 'https://aathifpm.github.io'
+                'Accept': 'application/json'
             },
             mode: 'cors'
         });
@@ -985,24 +978,13 @@ async function loadVoices(languageCode) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Server response:', errorText);
-            console.error('Response status:', response.status);
-            console.error('Response headers:', Object.fromEntries([...response.headers]));
             throw new Error(`Failed to load voices: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
-        if (!data || !data.voices) {
-            console.error('Invalid response data:', data);
-            throw new Error('Invalid response format from server');
-        }
         return data.voices || [];
     } catch (error) {
         console.error('Error loading voices:', error);
-        // Hide voice-related UI elements on error
-        const audioControls = document.querySelector('.audio-controls');
-        if (audioControls) {
-            audioControls.style.display = 'none';
-        }
         throw error;
     }
 }
@@ -1014,14 +996,24 @@ async function updateVoiceOptions(languageCode) {
     voiceSelect.innerHTML = '<option value="">Loading voices...</option>';
     
     try {
-        const voices = await loadVoices(languageCode);
+        // Fetch voices from backend instead of direct API call
+        const response = await fetch(`${API_BASE_URL}${ENDPOINTS.voices}?language_code=${languageCode}`);
+        
+        if (!response.ok) {
+            throw new Error(`Failed to load voices: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const voices = data.voices || [];
+        
+        // Rest of the voice selection logic remains the same
         voiceSelect.innerHTML = '';
         
-        if (!voices || voices.length === 0) {
+        if (voices.length === 0) {
             voiceSelect.innerHTML = '<option value="">No voices available</option>';
             return;
         }
-
+        
         // Sort voices by type (Neural2 > Studio > WaveNet > Standard)
         const sortedVoices = voices.sort((a, b) => {
             const getVoiceTypeScore = (name) => {
@@ -1104,7 +1096,6 @@ async function updateVoiceOptions(languageCode) {
             voiceSelect.appendChild(optgroup);
         };
 
-        // Add voices in order of quality
         addVoiceGroup(voiceGroups.neural2, 'neural2', '🌟 Premium Neural Voices');
         addVoiceGroup(voiceGroups.studio, 'studio', '🎭 Studio Voices');
         addVoiceGroup(voiceGroups.wavenet, 'wavenet', '🎵 Enhanced WaveNet Voices');
@@ -1121,7 +1112,11 @@ async function updateVoiceOptions(languageCode) {
     } catch (error) {
         console.error('Failed to update voice options:', error);
         voiceSelect.innerHTML = '<option value="">Voice service unavailable</option>';
-        throw error;
+        // Hide voice-related UI elements
+        const audioControls = document.querySelector('.audio-controls');
+        if (audioControls) {
+            audioControls.style.display = 'none';
+        }
     }
 }
 
