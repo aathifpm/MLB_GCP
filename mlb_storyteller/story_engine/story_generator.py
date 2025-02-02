@@ -15,8 +15,9 @@ class StoryGenerator:
             raise ValueError("GEMINI_API_KEY environment variable is required")
         
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-pro')
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
         
+
     async def generate_story(
         self,
         game_data: Dict,

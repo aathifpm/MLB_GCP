@@ -14,23 +14,78 @@ class TextToSpeechService:
     def __init__(self):
         """Initialize the Google Cloud Text-to-Speech client."""
         try:
+            # First try credentials as JSON string
             credentials_json = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-            if not credentials_json:
-                raise Exception("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
+            if credentials_json:
+                try:
+                    creds = json.loads(credentials_json)
+                    if 'type' not in creds or creds['type'] != 'service_account':
+                        raise Exception("Invalid credentials format - must be a service account key")
+                    print(f"Using service account from JSON: {creds.get('client_email', 'unknown')}")
+                    
+                    # Initialize client with credentials JSON
+                    self.client = texttospeech.TextToSpeechClient.from_service_account_info(creds)
+                    print("Successfully initialized Google Cloud Text-to-Speech client from JSON")
+                    return
+                except json.JSONDecodeError:
+                    print("Credentials not valid JSON, trying as file path...")
             
+            # Fall back to credentials file path
+            credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+            if not credentials_path:
+                raise Exception("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
+                
+            # Convert to absolute path if relative
+            if not os.path.isabs(credentials_path):
+                credentials_path = os.path.abspath(credentials_path)
+                
+            if not os.path.exists(credentials_path):
+                raise Exception(f"Google Cloud credentials file not found at {credentials_path}")
+                
+            # Verify credentials file structure
             try:
-                creds = json.loads(credentials_json)
-                if 'type' not in creds or creds['type'] != 'service_account':
-                    raise ValueError("Invalid service account format")
-                
-                self.client = texttospeech.TextToSpeechClient.from_service_account_info(creds)
-                print(f"Authenticated with service account: {creds['client_email']}")
-                
+                with open(credentials_path, 'r') as f:
+                    creds = json.load(f)
+                    if 'type' not in creds or creds['type'] != 'service_account':
+                        raise Exception("Invalid credentials file format - must be a service account key")
+                    print(f"Using service account: {creds.get('client_email', 'unknown')}")
             except json.JSONDecodeError:
-                raise ValueError("Invalid JSON in GOOGLE_APPLICATION_CREDENTIALS")
+                raise Exception("Invalid JSON in credentials file")
+                
+            # Update environment variable with absolute path
+            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+            print(f"Using Google Cloud credentials from: {credentials_path}")
+            
+            # Initialize client with explicit project
+            self.client = texttospeech.TextToSpeechClient()
+            
+            # Test the client by listing available voices
+            try:
+                self.client.list_voices()
+                print("Successfully authenticated with Google Cloud Text-to-Speech API")
+            except exceptions.PermissionDenied as e:
+                raise Exception(
+                    "Permission denied. Please ensure:\n"
+                    "1. The Cloud Text-to-Speech API is enabled in your Google Cloud Console\n"
+                    "2. The service account has the 'Cloud Text-to-Speech API User' role\n"
+                    f"Service Account: {creds.get('client_email')}\n"
+                    f"Project ID: {creds.get('project_id')}\n"
+                    f"Error: {str(e)}"
+                )
+            except exceptions.Unauthenticated as e:
+                raise Exception(
+                    "Authentication failed. Please ensure:\n"
+                    "1. The service account key file is valid\n"
+                    "2. The GOOGLE_APPLICATION_CREDENTIALS environment variable points to the correct file\n"
+                    f"Service Account: {creds.get('client_email')}\n"
+                    f"Project ID: {creds.get('project_id')}\n"
+                    f"Error: {str(e)}"
+                )
+            except Exception as e:
+                raise Exception(f"Failed to access Text-to-Speech API: {str(e)}")
                 
         except Exception as e:
-            print(f"TTS Service initialization failed: {str(e)}")
+            print(f"Error initializing Text-to-Speech client: {str(e)}")
             raise
 
     async def generate_audio(
@@ -94,31 +149,37 @@ class TextToSpeechService:
             raise
 
     async def get_available_voices(self, language_code: str = "en-US") -> List[Dict]:
-        """Get available voices filtered by language code."""
+        """
+        Get a list of available voices for the specified language.
+        
+        Args:
+            language_code: The language code to filter voices by
+            
+        Returns:
+            list: List of available voice names and properties
+        """
         try:
-            # List voices from Google Cloud TTS
-            response = self.client.list_voices(language_code=language_code)
+            # Run the API call in a thread pool
+            voices = await asyncio.to_thread(
+                self.client.list_voices,
+                language_code=language_code
+            )
             
-            if not response.voices:
+            if not voices or not voices.voices:
                 return []
-            
-            # Format voices for API response
-            return [{
-                "name": voice.name,
-                "gender": texttospeech.SsmlVoiceGender(voice.ssml_gender).name,
-                "language_codes": list(voice.language_codes),
-                "natural_sample_rate_hertz": voice.natural_sample_rate_hertz
-            } for voice in response.voices]
-            
-        except exceptions.PermissionDenied as e:
-            print(f"Permission error: {str(e)}")
-            raise Exception(f"Check service account permissions: {str(e)}")
-        except exceptions.Unauthenticated as e:
-            print(f"Auth error: {str(e)}")
-            raise Exception(f"Verify credentials configuration: {str(e)}")
+
+            return [
+                {
+                    'name': voice.name,
+                    'gender': texttospeech.SsmlVoiceGender(voice.ssml_gender).name,
+                    'language_codes': voice.language_codes,
+                    'natural_sample_rate_hertz': voice.natural_sample_rate_hertz
+                }
+                for voice in voices.voices
+            ]
         except Exception as e:
-            print(f"Voice listing failed: {str(e)}")
-            raise Exception(f"Voice service unavailable: {str(e)}")
+            print(f"Error listing voices: {str(e)}")
+            raise
 
     @staticmethod
     def chunk_text(text: str, max_chars: int = 5000) -> List[str]:

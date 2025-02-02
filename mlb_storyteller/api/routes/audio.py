@@ -1,13 +1,10 @@
 from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from typing import Optional, List
 from ..dependencies import get_text_to_speech_service
 import io
 from google.api_core import exceptions
-import os
-import json
-from google.cloud import texttospeech
 
 router = APIRouter(
     prefix="/audio",
@@ -128,41 +125,24 @@ async def list_voices(language_code: str = "en-US"):
         if not tts_service:
             raise HTTPException(status_code=500, detail="Text-to-speech service not available")
 
-        try:
-            voices = await tts_service.get_available_voices(language_code)
-            if not voices:
-                return VoiceListResponse(
-                    voices=[],
-                    message="No voices available for selected language"
-                )
-                
-            voice_list = [
-                Voice(
-                    name=voice["name"],
-                    gender=voice["gender"],
-                    language_codes=voice["language_codes"],
-                    natural_sample_rate_hertz=voice["natural_sample_rate_hertz"]
-                )
-                for voice in voices
-            ]
-            
-            return VoiceListResponse(voices=voice_list)
-            
-        except exceptions.PermissionDenied as e:
-            raise HTTPException(
-                status_code=403,
-                detail=f"Permission denied: {str(e)}"
+        voices = await tts_service.get_available_voices(language_code)
+        if not voices:
+            return VoiceListResponse(
+                voices=[],
+                message=f"No voices found for language code: {language_code}"
             )
-        except exceptions.Unauthenticated as e:
-            raise HTTPException(
-                status_code=401,
-                detail=f"Authentication failed: {str(e)}"
+
+        # Convert the voice objects to Pydantic models
+        voice_list = [
+            Voice(
+                name=voice["name"],
+                gender=voice["gender"],
+                language_codes=voice["language_codes"],
+                natural_sample_rate_hertz=voice["natural_sample_rate_hertz"]
             )
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Error listing voices: {str(e)}"
-            )
-            
+            for voice in voices
+        ]
+
+        return VoiceListResponse(voices=voice_list)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Error listing voices: {str(e)}") 
