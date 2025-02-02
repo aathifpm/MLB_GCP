@@ -140,6 +140,9 @@ jobs:
     - name: Deploy Application to Cloud Run
       if: github.ref == 'refs/heads/main'
       run: |
+        # Create credentials file
+        echo '${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}' > /tmp/google-cloud-credentials.json
+        
         gcloud run deploy mlb-storyteller \
           --image gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/mlb-storyteller:${{ github.sha }} \
           --platform managed \
@@ -155,6 +158,7 @@ jobs:
           --set-env-vars "GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" \
           --set-env-vars "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
           --set-env-vars "GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/google-cloud-credentials.json" \
+          --mount "type=volume,source=/tmp/google-cloud-credentials.json,target=/tmp/keys/google-cloud-credentials.json,readonly" \
           --add-cloudsql-instances=${{ secrets.GOOGLE_CLOUD_PROJECT }}:${{ secrets.GCP_REGION }}:mlb-db \
           --set-env-vars "CORS_ORIGINS=*" \
           --set-env-vars "CORS_ALLOW_CREDENTIALS=false" 

@@ -23,6 +23,11 @@ class TextToSpeechService:
             if not os.path.isabs(credentials_path):
                 credentials_path = os.path.abspath(credentials_path)
                 
+            # Create directory if it doesn't exist
+            credentials_dir = os.path.dirname(credentials_path)
+            if not os.path.exists(credentials_dir):
+                os.makedirs(credentials_dir, mode=0o755, exist_ok=True)
+                
             if not os.path.exists(credentials_path):
                 raise Exception(f"Google Cloud credentials file not found at {credentials_path}")
                 
