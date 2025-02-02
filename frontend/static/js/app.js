@@ -972,7 +972,8 @@ async function loadVoices(languageCode) {
             headers: {
                 'Accept': 'application/json'
             },
-            mode: 'cors'
+            mode: 'cors',
+            credentials: 'include'
         });
         
         if (!response.ok) {

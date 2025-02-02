@@ -2,10 +2,6 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Create directory for Google Cloud credentials and set permissions
-RUN mkdir -p /tmp/keys && \
-    chmod 755 /tmp/keys
-
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
