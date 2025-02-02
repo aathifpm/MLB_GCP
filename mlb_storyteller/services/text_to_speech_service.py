@@ -14,7 +14,23 @@ class TextToSpeechService:
     def __init__(self):
         """Initialize the Google Cloud Text-to-Speech client."""
         try:
-            # Get credentials path and convert to absolute path if relative
+            # First try credentials as JSON string
+            credentials_json = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+            if credentials_json:
+                try:
+                    creds = json.loads(credentials_json)
+                    if 'type' not in creds or creds['type'] != 'service_account':
+                        raise Exception("Invalid credentials format - must be a service account key")
+                    print(f"Using service account from JSON: {creds.get('client_email', 'unknown')}")
+                    
+                    # Initialize client with credentials JSON
+                    self.client = texttospeech.TextToSpeechClient.from_service_account_info(creds)
+                    print("Successfully initialized Google Cloud Text-to-Speech client from JSON")
+                    return
+                except json.JSONDecodeError:
+                    print("Credentials not valid JSON, trying as file path...")
+            
+            # Fall back to credentials file path
             credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
             if not credentials_path:
                 raise Exception("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")

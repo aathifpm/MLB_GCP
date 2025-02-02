@@ -107,7 +107,7 @@ jobs:
         echo "CACHE_ENABLED=True" >> .env
         echo "CACHE_TTL=3600" >> .env
         echo "GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" >> .env
-        echo "GOOGLE_APPLICATION_CREDENTIALS=${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}" >> .env
+        echo "GOOGLE_APPLICATION_CREDENTIALS='${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}'" >> .env
         echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
 
     - name: Run tests
