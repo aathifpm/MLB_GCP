@@ -69,7 +69,8 @@ jobs:
           servicenetworking.googleapis.com \
           run.googleapis.com \
           secretmanager.googleapis.com
-
+          
+        gcloud secrets create GOOGLE_CLOUD_CREDENTIALS --data-file="$GOOGLE_APPLICATION_CREDENTIALS"
         # Create VPC network if it doesn't exist
         if ! gcloud compute networks describe mlb-network 2>/dev/null; then
           gcloud compute networks create mlb-network --subnet-mode=auto
@@ -143,10 +144,11 @@ jobs:
     - name: Deploy Application to Cloud Run
       if: github.ref == 'refs/heads/main'
       run: |
-        gcloud run deploy mlb-storyteller \
+        # Deploy to Cloud Run
+        gcloud run deploy ${{ secrets.SERVICE_NAME }} \
           --image gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/mlb-storyteller:${{ github.sha }} \
           --platform managed \
-          --region ${{ secrets.GCP_REGION }} \
+          --region ${{ secrets.REGION }} \
           --vpc-connector mlb-connector \
           --allow-unauthenticated \
           --timeout 300 \
@@ -158,7 +160,7 @@ jobs:
           --set-env-vars "GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" \
           --set-env-vars "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
           --set-env-vars "GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/google-credentials.json" \
-          --set-secrets "GOOGLE_CLOUD_CREDENTIALS=GOOGLE_CLOUD_CREDENTIALS:latest" \
-          --add-cloudsql-instances=${{ secrets.GOOGLE_CLOUD_PROJECT }}:${{ secrets.GCP_REGION }}:mlb-db \
           --set-env-vars "CORS_ORIGINS=*" \
-          --set-env-vars "CORS_ALLOW_CREDENTIALS=false" 
+          --set-env-vars "CORS_ALLOW_CREDENTIALS=false" \
+          --set-secrets "GOOGLE_CLOUD_CREDENTIALS=GOOGLE_CLOUD_CREDENTIALS:latest" \
+          --add-cloudsql-instances=${{ secrets.GOOGLE_CLOUD_PROJECT }}:${{ secrets.REGION }}:mlb-db 
