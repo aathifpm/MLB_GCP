@@ -75,10 +75,7 @@ jobs:
           gcloud compute networks create mlb-network --subnet-mode=auto
         fi
 
-        # Grant Secret Manager Secret Accessor role to Cloud Run service account
-        gcloud projects add-iam-policy-binding ${{ secrets.GOOGLE_CLOUD_PROJECT }} \
-          --member="serviceAccount:${{ secrets.GOOGLE_CLOUD_PROJECT }}-553323728617-compute@developer.gserviceaccount.com" \
-          --role="roles/secretmanager.secretAccessor"
+
 
         # Create Cloud Memorystore (Redis) instance if it doesn't exist
         if ! gcloud redis instances describe mlb-redis --region=${{ secrets.GCP_REGION }} 2>/dev/null; then
