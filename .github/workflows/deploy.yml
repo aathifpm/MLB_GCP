@@ -138,7 +138,7 @@ jobs:
       uses: actions/upload-pages-artifact@v3
       with:
         path: '.'
-
+        
     - name: Deploy Application to Cloud Run
       if: github.ref == 'refs/heads/main'
       run: |
