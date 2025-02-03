@@ -69,44 +69,43 @@ jobs:
           servicenetworking.googleapis.com \
           run.googleapis.com \
           secretmanager.googleapis.com
-        
-        # Create and verify secret
-        echo "${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}" | gcloud secrets create GOOGLE_CLOUD_CREDENTIALS --data-file=-
-        gcloud secrets verify GOOGLE_CLOUD_CREDENTIALS
 
-
-        # Create VPC network if it doesn't exist
-        if ! gcloud compute networks describe mlb-network 2>/dev/null; then
-          gcloud compute networks create mlb-network --subnet-mode=auto
+        # Update or create secret
+        if gcloud secrets describe GOOGLE_CLOUD_CREDENTIALS 2>/dev/null; then
+          echo "${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}" | gcloud secrets versions add GOOGLE_CLOUD_CREDENTIALS --data-file=-
+        else
+          echo "${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}" | gcloud secrets create GOOGLE_CLOUD_CREDENTIALS --data-file=-
         fi
 
+        # Create or update VPC network
+        gcloud compute networks create mlb-network --subnet-mode=auto 2>/dev/null || true
 
-
-        # Create Cloud Memorystore (Redis) instance if it doesn't exist
+        # Create or update Redis instance
         if ! gcloud redis instances describe mlb-redis --region=${{ secrets.GCP_REGION }} 2>/dev/null; then
           gcloud redis instances create mlb-redis \
             --size=1 \
             --region=${{ secrets.GCP_REGION }} \
             --network=mlb-network \
-            --redis-version=redis_6_x
+            --redis-version=redis_6_x || true
         fi
 
-        # Get Redis instance IP
-        REDIS_IP=$(gcloud redis instances describe mlb-redis --region=${{ secrets.GCP_REGION }} --format='get(host)')
+        # Get Redis IP with retry
+        for i in {1..5}; do
+          REDIS_IP=$(gcloud redis instances describe mlb-redis --region=${{ secrets.GCP_REGION }} --format='get(host)') && break || sleep 15
+        done
         echo "REDIS_IP=$REDIS_IP" >> $GITHUB_ENV
 
-        # Create Serverless VPC connector if it doesn't exist
-        if ! gcloud compute networks vpc-access connectors describe mlb-connector --region=${{ secrets.GCP_REGION }} 2>/dev/null; then
-          gcloud compute networks vpc-access connectors create mlb-connector \
-            --network=mlb-network \
-            --region=${{ secrets.GCP_REGION }} \
-            --range=10.8.0.0/28
-        fi
+        # Setup VPC connector
+        gcloud compute networks vpc-access connectors create mlb-connector \
+          --network=mlb-network \
+          --region=${{ secrets.GCP_REGION }} \
+          --range=10.8.0.0/28 2>/dev/null || true
 
-        # Set Datastore environment variables
+        # Set environment variables
         echo "DATASTORE_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" >> $GITHUB_ENV
         echo "DATASTORE_NAMESPACE=mlb_storyteller" >> $GITHUB_ENV
 
+        
     - name: Create env file
       run: |
         echo "DATASTORE_PROJECT=${DATASTORE_PROJECT}" >> .env
