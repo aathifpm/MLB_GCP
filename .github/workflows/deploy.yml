@@ -77,7 +77,7 @@ jobs:
 
         # Grant Secret Manager Secret Accessor role to Cloud Run service account
         gcloud projects add-iam-policy-binding ${{ secrets.GOOGLE_CLOUD_PROJECT }} \
-          --member="serviceAccount:${{ secrets.GOOGLE_CLOUD_PROJECT }}-compute@developer.gserviceaccount.com" \
+          --member="serviceAccount:${{ secrets.GOOGLE_CLOUD_PROJECT }}-553323728617-compute@developer.gserviceaccount.com" \
           --role="roles/secretmanager.secretAccessor"
 
         # Create Cloud Memorystore (Redis) instance if it doesn't exist
