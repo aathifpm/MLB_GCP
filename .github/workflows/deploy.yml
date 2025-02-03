@@ -142,23 +142,15 @@ jobs:
     - name: Deploy Application to Cloud Run
       if: github.ref == 'refs/heads/main'
       run: |
-        gcloud run deploy ${{ secrets.SERVICE_NAME }} \
-          --image gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/mlb-storyteller:${{ github.sha }} \
-          --platform managed \
-          --region ${{ secrets.REGION }} \
-          --vpc-connector mlb-connector \
-          --allow-unauthenticated \
-          --timeout 300 \
-          --cpu 1 \
-          --memory 1024Mi \
-          --set-env-vars ^
-            DATASTORE_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }},^
-            DATASTORE_NAMESPACE=mlb_storyteller,^
-            REDIS_URL=redis://${REDIS_IP}:6379,^
-            GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }},^
-            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},^
-            GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/google-credentials.json,^
-            CORS_ORIGINS=*,^
-            CORS_ALLOW_CREDENTIALS=false \
-          --set-secrets GOOGLE_CLOUD_CREDENTIALS=GOOGLE_CLOUD_CREDENTIALS:latest \
-          --add-cloudsql-instances=${{ secrets.GOOGLE_CLOUD_PROJECT }}:${{ secrets.REGION }}:mlb-db
+          gcloud run deploy ${{ secrets.SERVICE_NAME }} \
+            --image gcr.io/${{ secrets.GOOGLE_CLOUD_PROJECT }}/mlb-storyteller:${{ github.sha }} \
+            --platform managed \
+            --region ${{ secrets.REGION }} \
+            --vpc-connector mlb-connector \
+            --allow-unauthenticated \
+            --timeout 300 \
+            --cpu 1 \
+            --memory 1024Mi \
+            --set-env-vars DATASTORE_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }},DATASTORE_NAMESPACE=mlb_storyteller,REDIS_URL=redis://${REDIS_IP}:6379,GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }},GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/google-credentials.json,CORS_ORIGINS=*,CORS_ALLOW_CREDENTIALS=false \
+            --set-secrets GOOGLE_CLOUD_CREDENTIALS=GOOGLE_CLOUD_CREDENTIALS:latest \
+            --add-cloudsql-instances=${{ secrets.GOOGLE_CLOUD_PROJECT }}:${{ secrets.REGION }}:mlb-db
