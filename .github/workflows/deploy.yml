@@ -135,8 +135,15 @@ jobs:
     - name: Setup Pages
       uses: actions/configure-pages@v4
 
-    - name: Copy index.html to frontend directory
+    - name: Ensure frontend directories exist
       run: |
+        mkdir -p frontend/templates
+        mkdir -p frontend/static
+
+    - name: Copy frontend files
+      run: |
+        cp -r frontend/templates/* frontend/templates/
+        cp -r frontend/static/* frontend/static/
         cp index.html frontend/
         
     - name: Upload artifact 
@@ -162,7 +169,7 @@ jobs:
           --set-env-vars="GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" \
           --set-env-vars="GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
           --set-env-vars="CORS_ORIGINS=*" \
-          --set-env-vars="GOOGLE_APPLICATION_CREDENTIALS='${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}'" \
+          --set-env-vars="GOOGLE_APPLICATION_CREDENTIALS=${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}" \
           --set-env-vars="CORS_ALLOW_CREDENTIALS=false" \
           --set-secrets GOOGLE_CLOUD_CREDENTIALS=GOOGLE_CLOUD_CREDENTIALS:latest \
           --add-cloudsql-instances=${{ secrets.GOOGLE_CLOUD_PROJECT }}:${{ secrets.REGION }}:mlb-db
