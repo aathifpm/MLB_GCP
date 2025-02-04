@@ -61,14 +61,7 @@ async def get_player_photo(player_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/api/home-runs", response_model=List[Dict])
-async def get_all_home_runs():
-    """Get all home runs data across available seasons."""
-    try:
-        df = home_runs_fetcher.fetch_all_home_runs()
-        return df.to_dict('records')
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/api/home-runs/{season}", response_model=List[Dict])
 async def get_home_runs_by_season(season: str):

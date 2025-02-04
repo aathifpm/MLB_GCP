@@ -113,40 +113,34 @@ class MLBDataFetcher:
 
     async def get_game_data(self, game_pk: str) -> Dict:
         """
-        Fetch detailed game data from MLB Stats API with caching.
+        Fetch game data from MLB Stats API.
         
         Args:
             game_pk: The game ID to fetch data for
             
         Returns:
-            Dict containing processed game data
+            Dict containing game data
         """
-        # Try to get from cache first
-        cached_data = await self.cache.get_game_data(game_pk)
-        if cached_data:
-            return cached_data
-            
-        # If not in cache, fetch from API
-        endpoint = f"{self.base_url}/{self.version}/game/{game_pk}/feed/live"
-        
         try:
-            game_data = self._make_request(endpoint)
+            # Clean the game_pk to ensure it's a valid ID
+            if not game_pk or not str(game_pk).strip() or '${' in str(game_pk):
+                raise Exception("Invalid game ID provided")
+
+            endpoint = f"{self.base_url}/v1.1/game/{game_pk}/feed/live"
             
-            # Process the raw game data
-            processed_data = self._process_game_data(game_data)
-            
-            # Cache the processed data
-            await self.cache.set_game_data(game_pk, processed_data)
-            
-            return processed_data
-            
+            try:
+                data = self._make_request(endpoint)
+                return data
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 404:
+                    # Try to get schedule data for this game
+                    schedule_data = await self._get_game_schedule(game_pk)
+                    if schedule_data:
+                        return schedule_data
+                    raise Exception(f"Game ID {game_pk} not found")
+                raise e
+                
         except Exception as e:
-            if isinstance(e, requests.exceptions.HTTPError) and e.response.status_code == 404:
-                # Try to get schedule data for this game
-                schedule_data = await self._get_game_schedule(game_pk)
-                if schedule_data:
-                    return schedule_data
-                raise Exception(f"Game ID {game_pk} not found")
             raise Exception(f"Failed to fetch game data: {str(e)}")
 
     async def _get_game_schedule(self, game_pk: str) -> Optional[Dict]:

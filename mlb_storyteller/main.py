@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from mlb_storyteller.api.routes import audio
 from mlb_storyteller.data.mlb_data_fetcher import MLBDataFetcher
@@ -12,12 +12,13 @@ from pydantic import BaseModel
 import uvicorn
 import os
 from dotenv import load_dotenv
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
 from bson import ObjectId
 from flask import Flask, jsonify
 from flask_cors import CORS
 from mlb_storyteller.api.game_stats_routes import router as game_stats_router
+from pathlib import Path
 
 # Load environment variables
 load_dotenv()
@@ -70,6 +71,16 @@ frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fronten
 # Mount static files
 app.mount("/static", StaticFiles(directory=os.path.join(frontend_dir, "static")), name="static")
 
+# Add favicon route
+@app.get('/favicon.ico')
+async def get_favicon():
+    """Serve the favicon."""
+    favicon_path = Path(os.path.join(frontend_dir, "static", "images", "favicon.ico"))
+    if not favicon_path.exists():
+        # If custom favicon doesn't exist, use a default one
+        favicon_path = Path(os.path.join(frontend_dir, "static", "images", "baseball.ico"))
+    return FileResponse(favicon_path)
+
 # Add OPTIONS endpoint handlers for CORS preflight requests
 @app.options("/{path:path}")
 async def options_handler(path: str):
@@ -92,6 +103,14 @@ async def serve_index():
         raise HTTPException(status_code=404, detail=f"Index file not found at {index_path}")
     return FileResponse(index_path)
 
+@app.get("/quiz.html")
+async def serve_quiz():
+    """Serve the quiz.html file."""
+    from fastapi.responses import FileResponse
+    quiz_path = os.path.join(frontend_dir, "templates", "quiz.html")
+    if not os.path.exists(quiz_path):
+        raise HTTPException(status_code=404, detail="Quiz page not found")
+    return FileResponse(quiz_path)
 
 # Game data endpoints
 @app.get("/games/{game_id}")
@@ -258,6 +277,15 @@ async def generate_story(story_request: StoryRequest, user_id: Optional[str] = N
         raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/api/game/{game_id}/quiz")
+async def get_game_quiz(game_id: str, user_prefs: dict = Body(...)):
+    mlb_service = MLBDataFetcher()
+    game_data = await mlb_service.get_game_data(game_id)
+    processed_data = mlb_service._process_game_data(game_data)  # Use existing processing
+    story_generator = StoryGenerator()
+    quiz = await story_generator.generate_quiz(processed_data, user_prefs)
+    return quiz
 
 if __name__ == "__main__":
     # Get port from environment variable or use default

@@ -3405,6 +3405,33 @@ body.modal-open {
     font-size: 2rem;
     margin-bottom: 0.5rem;
 }
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.section-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section-header h2 i {
+    color: var(--primary-color);
+}
+
+.section-header #takeQuizBtn {
+    margin-left: auto;
+}
+
+
 
 @media (max-width: 768px) {
     .load-more-card {

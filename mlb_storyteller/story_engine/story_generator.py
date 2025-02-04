@@ -2,6 +2,7 @@ import google.generativeai as genai
 from typing import Dict
 import os
 from dotenv import load_dotenv
+import json
 
 load_dotenv()
 
@@ -17,6 +18,132 @@ class StoryGenerator:
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel('gemini-1.5-flash')
         
+
+    async def generate_quiz(self, game_data: Dict, user_preferences: Dict) -> Dict:
+        """Generate interactive quiz based on game data"""
+        quiz_prompt = await self._construct_quiz_prompt(game_data, user_preferences)
+        response = self.model.generate_content(quiz_prompt)
+        return self._parse_quiz_response(response.text)
+
+    async def _construct_quiz_prompt(self, game_data: Dict, user_preferences: Dict) -> str:
+        """Construct quiz generation prompt"""
+        base_prompt = await self._construct_prompt(game_data, user_preferences, "analytical")
+        
+        # Create a simplified game data structure
+        simplified_game = {
+            'summary': game_data.get('summary', {}),
+            'teams': {
+                'home': game_data.get('summary', {}).get('home_team'),
+                'away': game_data.get('summary', {}).get('away_team'),
+                'score': {
+                    'home': game_data.get('summary', {}).get('home_score'),
+                    'away': game_data.get('summary', {}).get('away_score')
+                }
+            }
+        }
+
+        return f"""
+        Based on this baseball game data, generate a quiz with 5 multiple-choice questions.
+        
+        Game Data:
+        {json.dumps(simplified_game, indent=2)}
+
+        Create 5 engaging quiz questions:
+        - 2 questions about key moments or plays from this game
+        - 1 question about player statistics 
+        - 1 baseball history/trivia question
+        - 1 prediction/analysis question about future implications
+
+        Format your response EXACTLY as a JSON object with this structure:
+        {{
+            "questions": [
+                {{
+                    "question": "What was the final score of the game?",
+                    "options": ["4-2", "3-1", "5-3", "2-1"],
+                    "correct_answer": "4-2",
+                    "explanation": "The game ended with a score of 4-2 in favor of the home team."
+                }},
+                // ... more questions ...
+            ]
+        }}
+
+        Requirements:
+        1. Each question must have exactly 4 options
+        2. The correct_answer must match one of the options exactly
+        3. Include a brief explanation for each answer
+        4. Make questions engaging and specific to this game
+        5. Ensure all JSON formatting is correct
+        """
+
+    def _parse_quiz_response(self, response_text: str) -> Dict:
+        """Parse the quiz response from Gemini."""
+        try:
+            # Clean up the response text to ensure valid JSON
+            # Remove any text before the first {
+            start_idx = response_text.find('{')
+            if start_idx == -1:
+                raise ValueError("No JSON object found in response")
+            
+            # Remove any text after the last }
+            end_idx = response_text.rfind('}')
+            if end_idx == -1:
+                raise ValueError("No JSON object found in response")
+            
+            json_str = response_text[start_idx:end_idx + 1]
+            
+            # Remove any comments
+            json_str = '\n'.join(line for line in json_str.split('\n') 
+                               if not line.strip().startswith('//'))
+            
+            # Parse the JSON
+            quiz_data = json.loads(json_str)
+            
+            # Validate the structure
+            if not isinstance(quiz_data, dict):
+                raise ValueError("Response is not a JSON object")
+            
+            if 'questions' not in quiz_data:
+                raise ValueError("Missing 'questions' array in response")
+            
+            if not isinstance(quiz_data['questions'], list):
+                raise ValueError("'questions' is not an array")
+            
+            # Process each question
+            for i, question in enumerate(quiz_data['questions']):
+                # Validate required fields
+                required_fields = ['question', 'options', 'correct_answer', 'explanation']
+                for field in required_fields:
+                    if field not in question:
+                        raise ValueError(f"Question {i+1} is missing required field: {field}")
+                
+                # Validate options
+                if not isinstance(question['options'], list):
+                    raise ValueError(f"Question {i+1}: options must be an array")
+                
+                if len(question['options']) != 4:
+                    raise ValueError(f"Question {i+1}: must have exactly 4 options")
+                
+                # Convert all values to strings
+                question['options'] = [str(opt).strip() for opt in question['options']]
+                question['correct_answer'] = str(question['correct_answer']).strip()
+                
+                # Validate correct answer is in options
+                if question['correct_answer'] not in question['options']:
+                    raise ValueError(f"Question {i+1}: correct_answer must match one of the options exactly")
+                
+                # Add index for client-side handling
+                question['index'] = i
+            
+            return quiz_data
+            
+        except json.JSONDecodeError as e:
+            print(f"JSON Parse Error: {str(e)}")
+            print(f"Response text: {response_text}")
+            raise ValueError(f"Failed to parse quiz response as JSON: {str(e)}")
+        except Exception as e:
+            print(f"Error processing quiz response: {str(e)}")
+            print(f"Response text: {response_text}")
+            raise ValueError(f"Error processing quiz response: {str(e)}")
 
     async def generate_story(
         self,

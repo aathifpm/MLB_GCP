@@ -46,7 +46,8 @@ const elements = {
     sliderPrev: document.querySelector('.slider-nav.prev'),
     sliderNext: document.querySelector('.slider-nav.next'),
     statusChips: document.querySelectorAll('.chip[data-filter]'),
-    sortChips: document.querySelectorAll('.chip[data-sort]')
+    sortChips: document.querySelectorAll('.chip[data-sort]'),
+    takeQuizBtn: document.getElementById('takeQuizBtn')
 };
 
 // State
@@ -947,6 +948,25 @@ function setupEventListeners() {
     // Load more games button
     document.getElementById('loadMoreGames')?.addEventListener('click', () => {
         loadMoreGames();
+    });
+
+    // Quiz navigation
+    elements.takeQuizBtn?.addEventListener('click', () => {
+        if (!gameState.selectedGame) {
+            showToast('Please select a game first', 'error');
+            return;
+        }
+        
+        const userPrefs = {
+            style: document.getElementById('storyStyle')?.value || 'dramatic',
+            focus: Array.from(document.querySelectorAll('input[name="focus"]:checked')).map(cb => cb.value),
+            length: document.getElementById('storyLength')?.value || 'medium',
+            include_player_stats: document.querySelector('input[name="include_player_stats"]')?.checked || false,
+            highlight_key_moments: document.querySelector('input[name="highlight_key_moments"]')?.checked || false
+        };
+        
+        const encodedPrefs = encodeURIComponent(JSON.stringify(userPrefs));
+        window.location.href = `/quiz.html?gameId=${gameState.selectedGame.gamePk}&userPrefs=${encodedPrefs}`;
     });
 }
 

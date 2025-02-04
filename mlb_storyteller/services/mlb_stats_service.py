@@ -28,7 +28,7 @@ class MLBStatsService:
         
         # Load teams data
         self.teams_data = self._load_teams_data()
-        self._load_home_run_data()
+        
 
     def _load_teams_data(self) -> Dict:
         """Load MLB teams data."""
@@ -49,16 +49,6 @@ class MLBStatsService:
             print(f"Error loading teams data: {str(e)}")
             return {}
 
-    def _load_home_run_data(self):
-        """Load home run data from MLB Stats API instead of CSV"""
-        try:
-            self.home_runs_df = pd.DataFrame()
-            # Example endpoint - adjust based on exact HR endpoint
-            hr_endpoint = "https://statsapi.mlb.com/api/v1/homeRuns"
-            data = requests.get(hr_endpoint).json()
-            self.home_runs_df = pd.json_normalize(data['homeRuns'])
-        except Exception as e:
-            print(f"Error loading home run data: {str(e)}")
 
     def get_game_feed(self, game_pk: str) -> Dict:
         try:
@@ -240,4 +230,14 @@ class MLBStatsService:
             }
         except Exception as e:
             print(f"Error extracting game stats: {str(e)}")
-            return {} 
+            return {}
+
+    def get_historical_events(self, team_id: str) -> List:
+        """Get notable historical events for a team"""
+        try:
+            endpoint = f"{self.base_url}/v1/teams/{team_id}/history"
+            response = requests.get(endpoint)
+            return response.json().get('events', [])
+        except Exception as e:
+            print(f"Error fetching history: {str(e)}")
+            return [] 
