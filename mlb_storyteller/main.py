@@ -72,14 +72,31 @@ frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fronten
 app.mount("/static", StaticFiles(directory=os.path.join(frontend_dir, "static")), name="static")
 
 # Add favicon route
-@app.get('/favicon.ico')
+@app.get('/favicon.ico', include_in_schema=False)
 async def get_favicon():
     """Serve the favicon."""
-    favicon_path = Path(os.path.join(frontend_dir, "static", "images", "favicon.ico"))
-    if not favicon_path.exists():
-        # If custom favicon doesn't exist, use a default one
-        favicon_path = Path(os.path.join(frontend_dir, "static", "images", "baseball.ico"))
-    return FileResponse(favicon_path)
+    try:
+        # First try to find the favicon in the static/images directory
+        favicon_path = os.path.join(frontend_dir, "static", "images", "favicon.ico")
+        if not os.path.exists(favicon_path):
+            # If not found, try the static directory
+            favicon_path = os.path.join(frontend_dir, "static", "favicon.ico")
+            if not os.path.exists(favicon_path):
+                # If still not found, use a default baseball icon
+                favicon_path = os.path.join(frontend_dir, "static", "images", "baseball.ico")
+                if not os.path.exists(favicon_path):
+                    # If no favicon found at all, return 404
+                    raise HTTPException(status_code=404, detail="Favicon not found")
+        
+        return FileResponse(
+            favicon_path,
+            media_type="image/x-icon",
+            headers={"Cache-Control": "public, max-age=31536000"}
+        )
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error serving favicon: {str(e)}")
 
 # Add OPTIONS endpoint handlers for CORS preflight requests
 @app.options("/{path:path}")
