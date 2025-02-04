@@ -169,7 +169,7 @@ jobs:
           --set-env-vars="GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}" \
           --set-env-vars="GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
           --set-env-vars="CORS_ORIGINS=*" \
-          --set-env-vars="GOOGLE_APPLICATION_CREDENTIALS=${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}" \
+          --set-env-vars="GOOGLE_APPLICATION_CREDENTIALS=tmp/keys/g_c.json" \
           --set-env-vars="CORS_ALLOW_CREDENTIALS=false" \
           --set-secrets GOOGLE_CLOUD_CREDENTIALS=GOOGLE_CLOUD_CREDENTIALS:latest \
           --add-cloudsql-instances=${{ secrets.GOOGLE_CLOUD_PROJECT }}:${{ secrets.REGION }}:mlb-db
