@@ -137,19 +137,19 @@ jobs:
 
     - name: Ensure frontend directories exist
       run: |
-        mkdir -p frontend/templates
-        mkdir -p frontend/static
+        mkdir -p _site/frontend/templates
+        mkdir -p _site/frontend/static
 
     - name: Copy frontend files
       run: |
-        cp -r frontend/templates/* frontend/templates/
-        cp -r frontend/static/* frontend/static/
-        cp index.html frontend/
+        cp -r frontend/templates/* _site/frontend/templates/
+        cp -r frontend/static/* _site/frontend/static/
+        cp index.html _site/frontend/
         
     - name: Upload artifact 
       uses: actions/upload-pages-artifact@v3
       with:
-        path: '.'
+        path: '_site'
         
     - name: Deploy Application to Cloud Run
       if: github.ref == 'refs/heads/main'
