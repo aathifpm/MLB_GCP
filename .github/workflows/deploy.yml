@@ -77,6 +77,11 @@ jobs:
           echo "${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}" | gcloud secrets create GOOGLE_CLOUD_CREDENTIALS --data-file=-
         fi
 
+        # Grant Cloud Run service account access to the secret
+        gcloud secrets add-iam-policy-binding GOOGLE_CLOUD_CREDENTIALS \
+          --member="serviceAccount:553323728617-compute@developer.gserviceaccount.com" \
+          --role="roles/secretmanager.secretAccessor"
+
         # Create or update VPC network
         gcloud compute networks create mlb-network --subnet-mode=auto 2>/dev/null || true
 
