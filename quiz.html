@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statsaga - Game Quiz</title>
+    <link rel="icon" type="image/x-icon" href="frontend/static/images/favicon.ico">
+
+
+    <link rel="stylesheet" href="frontend/static/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        .quiz-section {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .score-display {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 2rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            animation: pulse 2s infinite;
+        }
+
+        .quiz-question {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s ease;
+            border: 1px solid var(--border-color);
+        }
+
+        .quiz-question:hover {
+            transform: translateY(-4px);
+        }
+
+        .quiz-question h3 {
+            color: var(--primary-color);
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .question-text {
+            font-size: 1.2rem;
+            color: var(--text-color);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .options-grid {
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .quiz-option {
+            background: var(--background-color);
+            border: 2px solid var(--border-color);
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quiz-option:hover {
+            border-color: var(--primary-color);
+            background: rgba(37, 99, 235, 0.05);
+            transform: translateX(4px);
+        }
+
+        .quiz-option::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 4px;
+            background: var(--primary-color);
+            transform: scaleY(0);
+            transition: transform 0.2s ease;
+        }
+
+        .quiz-option:hover::before {
+            transform: scaleY(1);
+        }
+
+        .quiz-option.correct {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: var(--success-color);
+            color: var(--success-color);
+            font-weight: 500;
+        }
+
+        .quiz-option.incorrect {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: var(--error-color);
+            color: var(--error-color);
+            font-weight: 500;
+        }
+
+        .explanation {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(16, 185, 129, 0.1));
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            display: none;
+        }
+
+        .explanation.visible {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        .explanation-content {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .explanation-content i {
+            font-size: 1.25rem;
+            margin-top: 0.2rem;
+        }
+
+        .explanation-content.correct i {
+            color: var(--success-color);
+        }
+
+        .explanation-content.incorrect i {
+            color: var(--error-color);
+        }
+
+        .quiz-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(16, 185, 129, 0.05));
+            border-radius: 1rem;
+            padding: 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quiz-loading::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+
+        .baseball-spinner {
+            width: 80px;
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .baseball {
+            font-size: 3.5rem;
+            animation: spinBounce 2s infinite;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+        }
+
+        .baseball-spinner::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            width: 40px;
+            height: 10px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            animation: shadow 2s infinite;
+        }
+
+        .quiz-loading p {
+            font-size: 1.2rem;
+            color: var(--text-color);
+            margin: 0;
+            font-weight: 500;
+        }
+
+        .quiz-loading .loading-message {
+            margin-top: 1rem;
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+
+        .quiz-loading .loading-facts {
+            margin-top: 2rem;
+            font-style: italic;
+            color: var(--text-light);
+            height: 1.5em;
+            overflow: hidden;
+        }
+
+        .fact {
+            animation: slideFact 12s infinite;
+            opacity: 0;
+        }
+
+        @keyframes spinBounce {
+            0%, 100% { 
+                transform: translateY(0) rotate(0deg); 
+                filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+            }
+            50% { 
+                transform: translateY(-30px) rotate(360deg); 
+                filter: drop-shadow(0 20px 12px rgba(0, 0, 0, 0.15));
+            }
+        }
+
+        @keyframes shadow {
+            0%, 100% { 
+                transform: scale(1);
+                opacity: 0.3;
+            }
+            50% { 
+                transform: scale(0.5);
+                opacity: 0.1;
+            }
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        @keyframes slideFact {
+            0%, 5% { opacity: 0; transform: translateY(20px); }
+            10%, 90% { opacity: 1; transform: translateY(0); }
+            95%, 100% { opacity: 0; transform: translateY(-20px); }
+        }
+
+        @media (max-width: 768px) {
+            .quiz-section {
+                padding: 1rem;
+            }
+
+            .quiz-question {
+                padding: 1.5rem;
+            }
+
+            .question-text {
+                font-size: 1.1rem;
+            }
+
+            .quiz-option {
+                padding: 0.75rem 1rem;
+            }
+
+            .score-display {
+                padding: 0.5rem 1rem;
+                font-size: 1rem;
+            }
+
+            .quiz-loading {
+                min-height: 300px;
+                padding: 2rem;
+            }
+
+            .baseball {
+                font-size: 3rem;
+            }
+
+            .quiz-loading p {
+                font-size: 1.1rem;
+            }
+        }
+
+        /* Enhanced Logo Styles */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .home-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            transition: transform 0.2s ease;
+        }
+
+        .home-link:hover {
+            transform: translateY(-1px);
+        }
+
+        .logo-container h1 {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        .logo-container i {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.8rem;
+            margin: 0;
+        }
+
+        /* Ensure header content is properly aligned */
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 1.5rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .logo-container h1 {
+                font-size: 1.5rem;
+            }
+
+            .logo-container i {
+                font-size: 1.5rem;
+            }
+
+            .header-content {
+                padding: 0.5rem 1rem;
+            }
+        }
+
+        /* Add new styles for match header */
+        .match-header {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .teams-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            margin: 1rem 0;
+        }
+
+        .team {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .team-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .vs-badge {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 2rem;
+            font-weight: 600;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .teams-display {
+                gap: 1rem;
+            }
+
+            .team-name {
+                font-size: 1.2rem;
+            }
+
+            .vs-badge {
+                padding: 0.4rem 1rem;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="scroll-progress"></div>
+
+    <div class="app-container">
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-container">
+                    <a href="/" class="home-link">
+                        <i class="fas fa-baseball-ball"></i>
+                                <h1>Statsaga</h1>
+                    </a>
+                </div>
+                <div class="header-controls">
+                    <button class="btn btn-secondary" onclick="window.history.back()">
+                        <i class="fas fa-arrow-left"></i>
+                        Back to Game
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <section class="quiz-section" id="quizSection">
+                <div class="match-header">
+                    <div class="teams-display">
+                        <div class="team home-team">
+                            <div class="team-name" id="homeTeam">Loading...</div>
+                        </div>
+                        <div class="vs-badge">VS</div>
+                        <div class="team away-team">
+                            <div class="team-name" id="awayTeam">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quiz-header">
+                    <h2><i class="fas fa-question-circle"></i> Game Quiz</h2>
+                    <div class="score-display">
+                        <span id="currentScore">Score: 0</span>
+                    </div>
+                </div>
+                
+                <div class="quiz-loading" id="quizLoading">
+                    <div class="baseball-spinner">
+                        <div class="baseball">⚾</div>
+                    </div>
+                    <p>Preparing Your Baseball Quiz</p>
+                    <p class="loading-message">Gathering interesting questions about the game...</p>
+                    <div class="loading-facts">
+                        <div class="fact">Did you know? The longest MLB game went for 8 hours and 6 minutes!</div>
+                    </div>
+                </div>
+
+                <div class="quiz-container hidden" id="quizContainer"></div>
+            </section>
+        </main>
+
+        <!-- Reuse existing footer from index -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p><i class="fas fa-baseball-ball"></i> Statsaga &copy; 2025</p>
+                <div class="social-links">
+                    <a href="https://www.facebook.com/mlb" target="_blank"><i class="fab fa-facebook"></i></a>
+                    <a href="https://www.instagram.com/mlb" target="_blank"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+        </footer>
+
+        <!-- Toast Notifications Container -->
+        <div id="toastContainer" class="toast-container"></div>
+    </div>
+
+    <script>
+        // Add API base URL handling
+        const API_BASE_URL = window.location.hostname === 'aathifpm.github.io' 
+            ? 'https://mlb-storyteller-553323728617.us-central1.run.app'
+            : 'http://localhost:8000';
+
+        // Add safe JSON parsing function first
+        const safeJsonParse = (str) => {
+            try { return JSON.parse(str); } 
+            catch { return {}; }
+        };
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const gameId = urlParams.get('gameId');
+            const userPrefsParam = urlParams.get('userPrefs') || '{}';
+            const userPrefs = safeJsonParse(decodeURIComponent(userPrefsParam));
+
+            if (!gameId) {
+                window.location.href = '/';
+                return;
+            }
+
+            // Add function to fetch and display team names
+            async function fetchGameDetails() {
+                try {
+                    // Use the quiz endpoint since it already contains the game data
+                    const response = await fetch(`${API_BASE_URL}/api/game/${gameId}/quiz`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(userPrefs)
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to fetch game details');
+                    
+                    const quizData = await response.json();
+                    if (quizData.game_data && quizData.game_data.summary) {
+                        document.getElementById('homeTeam').textContent = quizData.game_data.summary.home_team || 'Home Team';
+                        document.getElementById('awayTeam').textContent = quizData.game_data.summary.away_team || 'Away Team';
+                    } else {
+                        throw new Error('Invalid game data format');
+                    }
+                } catch (error) {
+                    console.error('Failed to load team names:', error);
+                    document.getElementById('homeTeam').textContent = 'Team A';
+                    document.getElementById('awayTeam').textContent = 'Team B';
+                }
+            }
+
+            // Call the function to load team names
+            fetchGameDetails();
+
+            const quizContainer = document.getElementById('quizContainer');
+            const loadingElement = document.getElementById('quizLoading');
+            let score = 0;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/game/${gameId}/quiz`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(userPrefs)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const quizData = await response.json();
+                if (!quizData?.questions?.length) {
+                    throw new Error('Invalid quiz data format');
+                }
+
+                // Update team names if not already done
+                if (quizData.game_data && quizData.game_data.summary) {
+                    document.getElementById('homeTeam').textContent = quizData.game_data.summary.home_team || 'Home Team';
+                    document.getElementById('awayTeam').textContent = quizData.game_data.summary.away_team || 'Away Team';
+                }
+
+                loadingElement.classList.add('hidden');
+                quizContainer.classList.remove('hidden');
+                
+                quizData.questions.forEach((question, index) => {
+                    const questionElement = createQuestionElement(question, index);
+                    quizContainer.appendChild(questionElement);
+                });
+
+            } catch (error) {
+                console.error('Quiz loading failed:', error);
+                showToast('Failed to load quiz. Please try again.', 'error');
+            }
+
+            function createQuestionElement(question, index) {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'quiz-question';
+                questionDiv.innerHTML = `
+                    <h3><i class="fas fa-lightbulb"></i> Question ${index + 1}</h3>
+                    <p class="question-text">${question.question}</p>
+                    <div class="options-grid" id="options-${index}"></div>
+                    <div class="explanation hidden" id="explanation-${index}"></div>
+                `;
+
+                const optionsContainer = questionDiv.querySelector(`#options-${index}`);
+                question.options.forEach((option, optionIndex) => {
+                    const button = document.createElement('button');
+                    button.className = 'quiz-option';
+                    button.innerHTML = `<i class="far fa-circle"></i> ${option}`;
+                    button.onclick = () => handleAnswer(question, option, button, optionIndex);
+                    optionsContainer.appendChild(button);
+                });
+
+                return questionDiv;
+            }
+
+            function handleAnswer(question, selectedAnswer, button, optionIndex) {
+                // Disable all options in this question group
+                const optionsContainer = button.parentElement;
+                const allOptions = optionsContainer.querySelectorAll('.quiz-option');
+                allOptions.forEach(opt => opt.disabled = true);
+
+                const isCorrect = selectedAnswer === question.correct_answer;
+                const explanation = document.getElementById(`explanation-${question.index}`);
+                
+                // Update button icons and classes
+                allOptions.forEach(opt => {
+                    const icon = opt.querySelector('i');
+                    if (opt === button) {
+                        icon.className = isCorrect ? 'fas fa-check-circle' : 'fas fa-times-circle';
+                        opt.classList.add(isCorrect ? 'correct' : 'incorrect');
+                    } else if (opt.textContent.includes(question.correct_answer)) {
+                        icon.className = 'fas fa-check-circle';
+                        opt.classList.add('correct');
+                    }
+                });
+
+                if (isCorrect) {
+                    score += 10;
+                    document.getElementById('currentScore').textContent = `Score: ${score}`;
+                }
+
+                explanation.innerHTML = `
+                    <div class="explanation-content ${isCorrect ? 'correct' : 'incorrect'}">
+                        <i class="fas fa-${isCorrect ? 'check-circle' : 'times-circle'}"></i>
+                        <div>
+                            <strong>${isCorrect ? 'Correct!' : 'Not quite.'}</strong><br>
+                            ${question.explanation}
+                        </div>
+                    </div>
+                `;
+                explanation.classList.remove('hidden');
+                explanation.classList.add('visible');
+            }
+
+            // Add toast notification system
+            function showToast(message, type = 'info') {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                const icon = document.createElement('i');
+                icon.className = type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+                const text = document.createElement('span');
+                text.textContent = message;
+                
+                toast.appendChild(icon);
+                toast.appendChild(text);
+                document.getElementById('toastContainer').appendChild(toast);
+                
+                setTimeout(() => toast.remove(), 5000);
+            }
+        });
+
+        // Add rotating baseball facts during loading
+        const facts = [
+            "Did you know? The longest MLB game went for 8 hours and 6 minutes!",
+            "A baseball has exactly 108 stitches",
+            "The first World Series was played in 1903",
+            "Babe Ruth wore a cabbage leaf under his cap to keep cool", 
+            "The shortest MLB game lasted only 51 minutes",
+            "The average lifespan of a baseball in an MLB game is just 7 pitches",
+            "Yogi Berra holds the record for most World Series rings with 10",
+            "The MLB uses around 850,000 baseballs per season",
+            "The first baseball gloves were flesh-colored to help hide their use",
+            "Ted Williams was a fighter pilot in both WWII and the Korean War",
+            "The Yankees have won 27 World Series championships",
+            "The oldest baseball park still in use is Fenway Park, opened in 1912",
+            "A MLB baseball must weigh between 5 and 5.25 ounces",
+            "The fastest pitch ever recorded was 105.1 mph by Aroldis Chapman",
+            "Jackie Robinson broke baseball's color barrier in 1947",
+            "The longest hitting streak in MLB history is 56 games by Joe DiMaggio",
+            "Nolan Ryan threw 7 no-hitters in his career, the most in MLB history",
+            "The Chicago Cubs went 108 years between World Series titles (1908-2016)",
+            "Roberto Clemente exactly recorded his 3,000th hit in his final at-bat",
+            "The 1899 Cleveland Spiders had the worst record ever at 20-134",
+            "Cal Ripken Jr. played in 2,632 consecutive games over 16 seasons",
+            "The first night game in MLB history was played in 1935",
+            "Willie Mays' famous 'The Catch' happened in the 1954 World Series",
+            "The Montreal Expos became the Washington Nationals in 2005",
+            "Pete Rose holds the all-time hits record with 4,256",
+            "The MLB didn't require batting helmets until 1971",
+            "Cy Young has 511 career wins, a record that will likely never be broken",
+            "The first MLB All-Star Game was played in 1933",
+            "Roger Maris hit 61 home runs in 1961, breaking Babe Ruth's record",
+            "The 'Dead Ball Era' lasted from 1900 to 1919"
+        ];
+
+        let currentFact = 0;
+        const factElement = document.querySelector('.fact');
+
+        function rotateFacts() {
+            factElement.style.animation = 'none';
+            factElement.offsetHeight; // Trigger reflow
+            factElement.style.animation = null;
+            factElement.textContent = facts[currentFact];
+            currentFact = (currentFact + 1) % facts.length;
+        }
+
+        setInterval(rotateFacts, 5000);
+    </script>
+</body>
+</html> 
