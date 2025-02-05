@@ -966,7 +966,7 @@ function setupEventListeners() {
         };
         
         const encodedPrefs = encodeURIComponent(JSON.stringify(userPrefs));
-        window.location.href = `/quiz.html?gameId=${gameState.selectedGame.gamePk}&userPrefs=${encodedPrefs}`;
+        window.location.href = `frontend/templates/quiz.html?gameId=${gameState.selectedGame.gamePk}&userPrefs=${encodedPrefs}`;
     });
 }
 
