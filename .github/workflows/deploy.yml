@@ -142,10 +142,18 @@ jobs:
 
     - name: Copy frontend files
       run: |
-        cp -r frontend/templates/* _site/frontend/templates/
-        cp -r frontend/static/* _site/frontend/static/
-        cp index.html _site/frontend/
+        # Create necessary directories
+        mkdir -p _site
         
+        # Copy files maintaining directory structure
+        cp -r frontend/* _site/frontend/
+        
+        # Copy index.html to root
+        cp index.html _site/
+        
+        # Ensure proper permissions
+        chmod -R 755 _site
+
     - name: Upload artifact 
       uses: actions/upload-pages-artifact@v3
       with:
