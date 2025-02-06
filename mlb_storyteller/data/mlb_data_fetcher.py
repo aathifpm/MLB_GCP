@@ -437,6 +437,7 @@ class MLBDataFetcher:
         except Exception as e:
             raise Exception(f"Failed to process game data: {str(e)}")
 
+
     def _extract_team_stats(self, team_data: Dict) -> Dict:
         """Extract comprehensive team statistics."""
         batting_stats = team_data.get('teamStats', {}).get('batting', {})
@@ -462,4 +463,281 @@ class MLBDataFetcher:
                 'strikeouts': pitching_stats.get('strikeOuts', 0),
                 'walks': pitching_stats.get('baseOnBalls', 0),
                 'hits_allowed': pitching_stats.get('hits', 0),
-                'home_run
+                'home_runs_allowed': pitching_stats.get('homeRuns', 0),
+                'era': pitching_stats.get('era', '0.00'),
+                'whip': pitching_stats.get('whip', '0.00')
+            }
+        }
+
+    def _process_play(self, play: Dict) -> Dict:
+        """Process a single play with detailed information."""
+        return {
+            'inning': play.get('about', {}).get('inning'),
+            'half_inning': play.get('about', {}).get('halfInning'),
+            'description': play.get('result', {}).get('description'),
+            'event': play.get('result', {}).get('event'),
+            'is_scoring_play': play.get('about', {}).get('isScoringPlay', False),
+            'rbi': play.get('result', {}).get('rbi', 0),
+            'batter': self._extract_player_info(play.get('matchup', {}).get('batter', {})),
+            'pitcher': self._extract_player_info(play.get('matchup', {}).get('pitcher', {})),
+            'count': play.get('count', {}),
+            'runners': [
+                {
+                    'runner': self._extract_player_info(runner.get('details', {}).get('runner', {})),
+                    'start_base': runner.get('movement', {}).get('originBase'),
+                    'end_base': runner.get('movement', {}).get('end'),
+                    'is_scored': runner.get('movement', {}).get('isOut', False)
+                }
+                for runner in play.get('runners', [])
+            ]
+        }
+
+    def _group_plays_by_inning(self, plays: List[Dict]) -> Dict[str, List[Dict]]:
+        """Group plays by inning for easy inning-by-inning narrative."""
+        plays_by_inning = {}
+        for play in plays:
+            inning = play.get('about', {}).get('inning')
+            half = play.get('about', {}).get('halfInning')
+            key = f"{inning}_{half}"
+            
+            if key not in plays_by_inning:
+                plays_by_inning[key] = []
+                
+            plays_by_inning[key].append(self._process_play(play))
+        
+        return plays_by_inning
+
+    def _extract_notable_fielding(self, boxscore: Dict) -> List[Dict]:
+        """Extract notable fielding performances."""
+        standouts = []
+        
+        for team_type in ['home', 'away']:
+            team_players = boxscore.get('teams', {}).get(team_type, {}).get('players', {})
+            for player_id, player in team_players.items():
+                stats = player.get('stats', {}).get('fielding', {})
+                
+                # Look for exceptional fielding plays
+                if (stats.get('putOuts', 0) >= 5 or 
+                    stats.get('assists', 0) >= 3 or 
+                    stats.get('doublePlays', 0) >= 2):
+                    standouts.append({
+                        'name': player.get('person', {}).get('fullName'),
+                        'highlight': f"{stats.get('putOuts', 0)} PO, {stats.get('assists', 0)} A, {stats.get('errors', 0)} E"
+                    })
+        
+        return standouts
+
+    def _extract_narrative_moments(self, plays: List) -> List[Dict]:
+        """Extract only the most significant moments from the game."""
+        key_moments = []
+        
+        for play in plays:
+            if not isinstance(play, dict):
+                continue
+                
+            about = play.get('about', {})
+            result = play.get('result', {})
+            
+            # Only include truly significant plays
+            if (about.get('isScoringPlay', False) or
+                'home_run' in result.get('event', '').lower() or
+                result.get('rbi', 0) >= 2 or
+                (about.get('inning') >= 7 and about.get('isComplete') and about.get('hasOut'))):  # Late-game crucial outs
+                
+                key_moments.append({
+                    'inning': f"{about.get('halfInning', '').title()} {about.get('inning')}",
+                    'description': result.get('description'),
+                    'score': f"{about.get('awayScore', 0)}-{about.get('homeScore', 0)}"
+                })
+        
+        return key_moments
+
+    def _extract_notable_hitting(self, boxscore: Dict) -> List[Dict]:
+        """Extract only exceptional hitting performances."""
+        standouts = []
+        
+        for team_type in ['home', 'away']:
+            team_batters = boxscore.get('teams', {}).get(team_type, {}).get('batters', [])
+            for batter_id in team_batters:
+                batter = boxscore.get('teams', {}).get(team_type, {}).get('players', {}).get(f'ID{batter_id}', {})
+                stats = batter.get('stats', {}).get('batting', {})
+                
+                # Only truly notable performances
+                if (stats.get('hits', 0) >= 3 or
+                    stats.get('homeRuns', 0) >= 1 or
+                    stats.get('rbi', 0) >= 3):
+                    
+                    standouts.append({
+                        'name': batter.get('person', {}).get('fullName'),
+                        'highlight': f"{stats.get('hits')}-{stats.get('atBats')}, {stats.get('homeRuns')} HR, {stats.get('rbi')} RBI"
+                    })
+        
+        return standouts
+
+    def _extract_notable_pitching(self, boxscore: Dict) -> List[Dict]:
+        """Extract only exceptional pitching performances."""
+        standouts = []
+        
+        for team_type in ['home', 'away']:
+            team_pitchers = boxscore.get('teams', {}).get(team_type, {}).get('pitchers', [])
+            for pitcher_id in team_pitchers:
+                pitcher = boxscore.get('teams', {}).get(team_type, {}).get('players', {}).get(f'ID{pitcher_id}', {})
+                stats = pitcher.get('stats', {}).get('pitching', {})
+                
+                # Only truly notable performances
+                ip = float(stats.get('inningsPitched', '0.0'))
+                if (ip >= 6.0 and stats.get('earnedRuns', 0) <= 2) or stats.get('strikeOuts', 0) >= 8:
+                    standouts.append({
+                        'name': pitcher.get('person', {}).get('fullName'),
+                        'highlight': f"{stats.get('inningsPitched')} IP, {stats.get('strikeOuts')} K, {stats.get('earnedRuns')} ER"
+                    })
+        
+        return standouts
+
+    def _get_runners_narrative(self, current_play: Dict) -> str:
+        """Create a concise description of runners on base."""
+        if not current_play or 'matchup' not in current_play:
+            return "Bases empty"
+            
+        matchup = current_play['matchup']
+        bases = []
+        
+        for base in ['first', 'second', 'third']:
+            if matchup.get(f'postOn{base.capitalize()}'):
+                bases.append(base[0].upper())  # Just use F, S, T for bases
+                
+        return "Bases: " + ("-".join(bases) if bases else "empty")
+
+    def _format_weather_narrative(self, weather: Dict) -> str:
+        """Convert weather data into a narrative-friendly format."""
+        if weather.get('condition') == 'Dome':
+            return "Game played indoors"
+        
+        conditions = []
+        if temp := weather.get('temp'):
+            conditions.append(f"{temp}°F")
+        if wind := weather.get('wind'):
+            conditions.append(f"winds {wind}")
+            
+        return ", ".join(conditions) if conditions else "Weather information unavailable"
+
+    def _get_batter_narrative(self, current_play: Dict) -> str:
+        """Create a narrative description of the current batter."""
+        if not current_play or 'matchup' not in current_play:
+            return "No batter data available"
+            
+        batter = current_play.get('matchup', {}).get('batter', {})
+        stats = current_play.get('matchup', {}).get('batterHotColdZones', [])
+        
+        name = batter.get('fullName', 'Unknown batter')
+        if not stats:
+            return name
+            
+        # Add relevant batting stats if available
+        batting_line = []
+        if avg := stats[0].get('avg'):
+            batting_line.append(f"batting {avg}")
+        if hr := stats[0].get('homeRuns'):
+            batting_line.append(f"{hr} HR")
+            
+        return f"{name} ({', '.join(batting_line)})" if batting_line else name
+
+    def _get_pitcher_narrative(self, current_play: Dict) -> str:
+        """Create a narrative description of the current pitcher."""
+        if not current_play or 'matchup' not in current_play:
+            return "No pitcher data available"
+            
+        pitcher = current_play.get('matchup', {}).get('pitcher', {})
+        stats = current_play.get('matchup', {}).get('pitcherHotColdZones', [])
+        
+        name = pitcher.get('fullName', 'Unknown pitcher')
+        if not stats:
+            return name
+            
+        # Add relevant pitching stats if available
+        pitching_line = []
+        if era := stats[0].get('era'):
+            pitching_line.append(f"ERA {era}")
+        if ip := stats[0].get('inningsPitched'):
+            pitching_line.append(f"{ip} IP")
+            
+        return f"{name} ({', '.join(pitching_line)})" if pitching_line else name
+
+    def _format_player_name(self, player: Dict) -> str:
+        """Format player name for narrative purposes."""
+        return player.get('fullName', 'Unknown player')
+
+    def _determine_winner(self, teams: Dict) -> str:
+        """Determine the winning team name."""
+        if not teams:
+            return "Unknown"
+            
+        home_score = teams.get('home', {}).get('runs', 0)
+        away_score = teams.get('away', {}).get('runs', 0)
+        
+        if home_score > away_score:
+            return teams.get('home', {}).get('team', {}).get('name', 'Home Team')
+        return teams.get('away', {}).get('team', {}).get('name', 'Away Team')
+
+    def _process_player_stats(self, stats_data: Dict) -> Dict:
+        """Process player statistics data."""
+        processed_stats = {
+            "hitting": {},
+            "pitching": {},
+            "fielding": {}
+        }
+        
+        for stat_group in stats_data.get("stats", []):
+            group_name = stat_group.get("group", {}).get("displayName", "").lower()
+            if group_name in processed_stats:
+                splits = stat_group.get("splits", [])
+                if splits:
+                    processed_stats[group_name] = splits[0].get("stat", {})
+        
+        return processed_stats
+
+    def get_home_runs_data(self) -> pd.DataFrame:
+        """
+        Fetch and process MLB home runs data from the provided CSV files.
+        
+        Returns:
+            DataFrame containing processed home runs data from all seasons
+        """
+        mlb_hr_csvs_list = [
+            'https://storage.googleapis.com/gcp-mlb-hackathon-2025/datasets/2016-mlb-homeruns.csv',
+            'https://storage.googleapis.com/gcp-mlb-hackathon-2025/datasets/2017-mlb-homeruns.csv',
+            'https://storage.googleapis.com/gcp-mlb-hackathon-2025/datasets/2024-mlb-homeruns.csv',
+            'https://storage.googleapis.com/gcp-mlb-hackathon-2025/datasets/2024-postseason-mlb-homeruns.csv'
+        ]
+        
+        # Create a list to store DataFrames for each season
+        dfs = []
+        
+        for csv_url in mlb_hr_csvs_list:
+            try:
+                # Extract season from the URL
+                season = csv_url.split('/')[-1].split('-')[0]
+                
+                # Read CSV file
+                df = pd.read_csv(csv_url)
+                
+                # Add season column
+                df['season'] = season
+                
+                dfs.append(df)
+                
+            except Exception as e:
+                print(f"Error processing {csv_url}: {str(e)}")
+                continue
+        
+        if not dfs:
+            raise Exception("Failed to load any home runs data")
+            
+        # Combine all DataFrames
+        all_mlb_hrs = pd.concat(dfs, ignore_index=True)
+        
+        # Select and reorder columns
+        columns = ['season', 'play_id', 'title', 'ExitVelocity', 'LaunchAngle', 'HitDistance', 'video']
+        all_mlb_hrs = all_mlb_hrs[columns]
+        
+        return all_mlb_hrs 
